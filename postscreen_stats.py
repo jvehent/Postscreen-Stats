@@ -19,7 +19,7 @@ def usage():
     print   "usage: postscreen_stats.py <-y|--year> <-r|--report|-f|--full>"
     print   "   <-f|--file>     log file to parse (default to /var/log/maillog)"
     print   "   <-i|--ip>       filters the results on a specific IP"
-    print   "   <-r|--report>   report mode {short|full} (default to short)"
+    print   "   <-r|--report>   report mode {short|full|ip} (default to short)"
     print   "   <-y|--year>     select the year of the logs (default to current year)"
     print
 
@@ -93,6 +93,8 @@ for argument, value in args_list:
             REPORT_MODE = "short"
         elif value in ('full'):
             REPORT_MODE = "full"
+        elif value in ('ip'):
+            REPORT_MODE = "ip"
         else:
             print "unknown report type"
             usage()
@@ -203,7 +205,7 @@ maillog.close
 
 
 # additional reports shown in full mode only
-if REPORT_MODE in ('full'):
+if REPORT_MODE in ('full','ip'):
 
     for client in ip_list:
         print   client
@@ -216,8 +218,9 @@ if REPORT_MODE in ('full'):
             print   "\tlast seen on",
             print   datetime.datetime.fromtimestamp(int(ip_list[client].\
                     timestamp_last_seen)).strftime('%Y-%m-%d %H:%M:%S')
-            print   "\treconnection delay (graylist):",
-            print   ip_list[client].reconnection_delay,"seconds"
+            if ip_list[client].reconnection_delay > 0:
+                print   "\treconnection delay (graylist):",
+                print   ip_list[client].reconnection_delay,"seconds"
 
         if ip_list[client].count_passnew > 0:
             print   "\tPASS NEW count:",ip_list[client].count_passnew
