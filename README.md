@@ -14,7 +14,6 @@ Examples:
 ---------------------------------
 <code>
     $ python postscreen_stats.py -f maillog.1 -r short -y 2011
-    
     === Postscreen statistics ===
     0 BLACKLISTED
     33 COMMAND COUNT LIMIT
@@ -46,7 +45,6 @@ Examples:
 --------------------------------------------
 <code>
     $ python postscreen_stats.py -f maillog.1 -r ip -i 1.2.3.4
-
     Filtering results to match: 1.2.3.4
     1.2.3.4
         connections count: 2
