@@ -1,0 +1,5 @@
+Simple script to compute some statistics on Postfix/Postscreen Activity
+Run it against your postfix syslogs
+
+Published under GPL v2
+
