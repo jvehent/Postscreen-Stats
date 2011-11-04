@@ -9,6 +9,8 @@ import calendar
 import datetime
 import getopt
 import sys
+import urllib
+from collections import defaultdict
 from decimal import *
 
 def usage():
@@ -18,6 +20,7 @@ def usage():
     print
     print   "usage: postscreen_stats.py <-y|--year> <-r|--report|-f|--full>"
     print   "   <-f|--file>     log file to parse (default to /var/log/maillog)"
+    print   "   <-g|--geoloc>   /!\ slow ! ip geoloc against hostip.info (default disabled)"
     print   "   <-i|--ip>       filters the results on a specific IP"
     print   "   <-r|--report>   report mode {short|full|ip} (default to short)"
     print   "   <-y|--year>     select the year of the logs (default to current year)"
@@ -43,6 +46,8 @@ def gen_unix_ts(syslog_date):
 # each client's statistics are stored in the class below
 class ClientStat:
     def __init__(self):
+        self.actions = defaultdict(int) # store the actions in a dictionary
+
         self.count_connect = 0          # how many times we saw this client
         self.timestamp_first_seen = 0   # unix timestamp
         self.timestamp_last_seen = 0    # unix timestamp
@@ -61,7 +66,9 @@ class ClientStat:
         self.count_command_length_limit = 0
         self.count_whitelisted = 0
         self.count_blacklisted = 0
+        self.count_bare_newline = 0
         self.reconnection_delay = 0
+        self.country = ""
 
 
 # VARIABLES
@@ -72,15 +79,18 @@ NOW = datetime.datetime.now()
 YEAR = NOW.year
 REPORT_MODE = "short"
 LOGFILE = "/var/log/maillog"
+GEOLOC = 0
 # the list of clients ips and pointer to instance of class
 ip_list = {}
 
 
 # command line arguments
 args_list, remainder = getopt.getopt(sys.argv[1:],
-    'i:f:y:r:h', ['ip=','year=','report=','help', 'file='])
+    'gi:f:y:r:h', ['geoloc','ip=','year=','report=','help', 'file='])
 
 for argument, value in args_list:
+    if argument in ('-g', '--geoloc'):
+        GEOLOC = 1
     if argument in ('-f', '--file'):
         LOG_FILE = value
     if argument in ('-y', '--year'):
@@ -134,6 +144,11 @@ for line in maillog:
     
                     ip_list[current_ip].timestamp_last_seen = \
                                     ip_list[current_ip].timestamp_first_seen
+                    if GEOLOC == 1:
+                        # geo localise ip
+                        geoloc_url = "http://api.hostip.info/country.php?ip=" + current_ip
+                        ip_list[current_ip].country = urllib.urlopen(geoloc_url).read()
+
                 # ip is already known, update the last_seen timestamp
                 else:
                     ip_list[current_ip].timestamp_last_seen = \
@@ -201,6 +216,10 @@ for line in maillog:
                     elif re.match("^BLACKLISTED$", line_fields[5]):
                         ip_list[current_ip].count_blacklisted += 1
 
+                    elif re.match("^BARE$", line_fields[5]):
+                        if re.search("^NEWLINE", line_fields[6]):
+                            ip_list[current_ip].count_bare_newline += 1
+
 maillog.close
 
 
@@ -251,35 +270,18 @@ if REPORT_MODE in ('full','ip'):
         if ip_list[client].count_command_count_limit > 0:
             print   "\tCOMMAND COUNT LIMIT count:",ip_list[client].count_command_count_limit
         if ip_list[client].count_command_length_limit > 0:
-            print   "\tCOMMAND LENGTH LIMIT count:",ip_list[client].count_command_length_limit
+            print   "\tCOMMAND LENGTH LIMIT count:",ip_list[client].count_command_length_limit    
+        print "\tCountry:",ip_list[client].country
 
 # normal report mode
 if REPORT_MODE in ('short','full'):
-    postscreen = {}
-    postscreen["CONNECT"] = 0
-    postscreen["PASS NEW"] = 0
-    postscreen["PASS OLD"] = 0
-    postscreen["WHITELISTED"] = 0
-    postscreen["BLACKLISTED"] = 0
-    postscreen["DNSBL"] = 0
-    postscreen["PREGREET"] = 0
-    postscreen["NOQUEUE MAXCONN"] = 0
-    postscreen["NOQUEUE PORT BUSY"] = 0
-    postscreen["NOQUEUE REJECT 450 (graylist)"] = 0
-    postscreen["HANGUP"] = 0
-    postscreen["COMMAND PIPELINING"] = 0
-    postscreen["COMMAND TIME LIMIT"] = 0
-    postscreen["COMMAND COUNT LIMIT"] = 0
-    postscreen["COMMAND LENGTH LIMIT"] = 0
-    clients = {}
-    clients["seconds avg. reco. delay"] = 0
-    clients["clients"] = 0
-    clients["came back count"] = 0
-    clients["avg. dnsbl rank"] = 0
+    postscreen = defaultdict(int)
+    clients = defaultdict(int)
     comeback = {'<10s':0, '>10s to 30s':0, '>30s to 1min':0, '>1min to 5min':0,
                 '>5 min to 30min':0, '>30min to 2h':0, '>2h to 5h':0,
                 '>5h to 12h':0, '>12h to 24h':0, '>24h':0}
-    
+    blocked_countries = defaultdict(int)
+     
     # basic accounting, browse through the list of objects and count
     # the occurences
     for client in ip_list:
@@ -326,6 +328,16 @@ if REPORT_MODE in ('short','full'):
         postscreen["COMMAND TIME LIMIT"] += ip_list[client].count_command_time_limit
         postscreen["COMMAND COUNT LIMIT"] += ip_list[client].count_command_count_limit
         postscreen["COMMAND LENGTH LIMIT"] += ip_list[client].count_command_length_limit
+        # if client was blocked at any point, add its country to the count
+        if ( GEOLOC == 1 and
+            (ip_list[client].count_blacklisted > 0
+            or ip_list[client].count_dnsbl > 0
+            or ip_list[client].count_pregreet > 0
+            or ip_list[client].count_pipelining > 0
+            or ip_list[client].count_command_time_limit > 0
+            or ip_list[client].count_command_count_limit > 0
+            or ip_list[client].count_command_length_limit > 0)):
+            blocked_countries[ip_list[client].country] += 1
 
     if clients["came back count"] > 0:
         clients["seconds avg. reco. delay"] /= clients["came back count"]
@@ -373,4 +385,5 @@ if REPORT_MODE in ('short','full'):
         sys.stdout.write(str(Decimal(comeback['>5h to 12h'])/dec_cameback * 100).ljust(8) + "|")
         sys.stdout.write(str(Decimal(comeback['>12h to 24h'])/dec_cameback * 100).ljust(8) + "|")
         print str(Decimal(comeback['>24h'])/dec_cameback * 100).ljust(8) + "|"
+
 
