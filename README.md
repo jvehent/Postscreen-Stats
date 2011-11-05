@@ -14,13 +14,13 @@ Short report on full log file
 ---------------------------------
 
     $ python postscreen_stats.py -f maillog.1 -r short -y 2011
-        === Postscreen statistics ===
-        0 BLACKLISTED
-        33 COMMAND COUNT LIMIT
-        0 COMMAND LENGTH LIMIT
-        16 COMMAND PIPELINING
-        6 COMMAND TIME LIMIT
-        11010 CONNECT
+    === Postscreen statistics ===
+    0 BLACKLISTED
+    33 COMMAND COUNT LIMIT
+    0 COMMAND LENGTH LIMIT
+    16 COMMAND PIPELINING
+    6 COMMAND TIME LIMIT
+    11010 CONNECT
     536 DNSBL
     503 HANGUP
     42 NOQUEUE MAXCONN
@@ -44,15 +44,15 @@ Short report on full log file
 Get the statistics for a specific IP only
 --------------------------------------------
 
-$ python postscreen_stats.py -f maillog.1 -r ip -i 1.2.3.4
-Filtering results to match: 1.2.3.4
-1.2.3.4
-    connections count: 2
-    first seen on 2011-10-22 09:37:54
-    last seen on 2011-10-22 09:38:00
-    DNSBL count: 1
-    DNSBL ranks: ['6']
-    HANGUP count: 2
+    $ python postscreen_stats.py -f maillog.1 -r ip -i 1.2.3.4
+    Filtering results to match: 1.2.3.4
+    1.2.3.4
+        connections count: 2
+        first seen on 2011-10-22 09:37:54
+        last seen on 2011-10-22 09:38:00
+        DNSBL count: 1
+        DNSBL ranks: ['6']
+        HANGUP count: 2
 
 
 
@@ -64,29 +64,28 @@ Use the '-g' switch to activate geolocalisation against hostip.info. At the mome
 1. It's slow ! Don't expect to get more than 2/3 IPs per second. So if you have 2000 IPs to geolocalise, it will take a while to run
 2. It only gives the Country of the IP. I didn't find the need to query the whole GPS data, but that's easy enough to change.
 
-$ python postscreen_stats.py -f 10000maillog -r short -g
+    $ python postscreen_stats.py -f 10000maillog -r short -g
 
-=== Postscreen statistics ===
-4 COMMAND COUNT LIMIT
-2 COMMAND PIPELINING
-555 CONNECT
-75 DNSBL
-28 HANGUP
-0 NOQUEUE 450
-147 NOQUEUE 450 deep protocol test reconnection
-68 PASS NEW
-387 PASS OLD
-12 PREGREET
-8 WHITELISTED
+    === Postscreen statistics ===
+    4 COMMAND COUNT LIMIT
+    2 COMMAND PIPELINING
+    555 CONNECT
+    75 DNSBL
+    28 HANGUP
+    147 NOQUEUE 450 deep protocol test reconnection
+    68 PASS NEW
+    387 PASS OLD
+    12 PREGREET
+    8 WHITELISTED
 
-=== Clients statistics ===
-3 avg. dnsbl rank
-248 clients
-0 reconnections
+    === Clients statistics ===
+    3 avg. dnsbl rank
+    248 clients
+    0 reconnections
 
-=== First reconnection delay (graylist) ===
-delay| <10s   |>10to30s| >30to1m| >1to5m | >5to30m|>30mto2h| >2hto5h|>5hto12h|>12to24h| >24h   |
-count|0       |0       |0       |0       |0       |0       |0       |0       |0       |0       |
+    === First reconnection delay (graylist) ===
+    delay| <10s   |>10to30s| >30to1m| >1to5m | >5to30m|>30mto2h| >2hto5h|>5hto12h|>12to24h| >24h   |
+    count|0       |0       |0       |0       |0       |0       |0       |0       |0       |0       |
 
-=== Blocked IPs per country ===
-[('US', 56), ('XX', 17), ('RU', 1), ('RO', 1), ('IN', 1)]
+    === Blocked IPs per country ===
+    [('US', 56), ('XX', 17), ('RU', 1), ('RO', 1), ('IN', 1)]
