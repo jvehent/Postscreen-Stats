@@ -146,7 +146,8 @@ for line in maillog:
                             # been rejected with a code 450 calculate the
                             # reconnection delay
                             if (ip_list[current_ip].logs["CONNECT"] == 2 
-                                and ip_list[current_ip].logs["NOQUEUE 450"] > 0):
+                                and ip_list[current_ip].\
+                                logs["NOQUEUE 450 deep protocol test reconnection"] > 0):
                                 ip_list[current_ip].logs["RECO. DELAY (graylist)"] = \
                                     ip_list[current_ip].logs["LAST SEEN"] \
                                     - ip_list[current_ip].logs["FIRST SEEN"]
