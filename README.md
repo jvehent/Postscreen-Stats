@@ -10,17 +10,17 @@ Published under GPL v2
 
 Examples:
 
-1. short report on full log file
+Short report on full log file
 ---------------------------------
 
     $ python postscreen_stats.py -f maillog.1 -r short -y 2011
-    === Postscreen statistics ===
-    0 BLACKLISTED
-    33 COMMAND COUNT LIMIT
-    0 COMMAND LENGTH LIMIT
-    16 COMMAND PIPELINING
-    6 COMMAND TIME LIMIT
-    11010 CONNECT
+        === Postscreen statistics ===
+        0 BLACKLISTED
+        33 COMMAND COUNT LIMIT
+        0 COMMAND LENGTH LIMIT
+        16 COMMAND PIPELINING
+        6 COMMAND TIME LIMIT
+        11010 CONNECT
     536 DNSBL
     503 HANGUP
     42 NOQUEUE MAXCONN
@@ -40,7 +40,8 @@ Examples:
     count|12      |21      |21      |196     |261     |88      |40      |29      |53      |119     |
        % |1.4     |2.5     |2.5     |23      |31      |10      |4.8     |3.5     |6.3     |14      |
 
-2. get the statistics for a specific IP only
+
+Get the statistics for a specific IP only
 --------------------------------------------
 
 $ python postscreen_stats.py -f maillog.1 -r ip -i 1.2.3.4
@@ -54,8 +55,10 @@ Filtering results to match: 1.2.3.4
     HANGUP count: 2
 
 
-3. Geo Localisation of blocked IPs
+
+Geo Localisation of blocked IPs
 -----------------------------------
+
 
 Use the '-g' switch to activate geolocalisation against hostip.info. At the moment, there are two big limitations to geolocalisation:
 1. It's slow ! Don't expect to get more than 2/3 IPs per second. So if you have 2000 IPs to geolocalise, it will take a while to run
