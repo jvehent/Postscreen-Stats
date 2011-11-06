@@ -19,6 +19,10 @@ def usage():
     print   "   parses postfix logs to compute statistics on postscreen activity"
     print
     print   "usage: postscreen_stats.py <-y|--year> <-r|--report|-f|--full>"
+    print
+    print   "   <-a|--action>   basic action filter ('PREGREET', 'DNSBL|BARE NEWLINE', ...)"
+    print   "                   operators | and & can be used. & has priority over |"
+    print   "                   ex. 'PREGREET&DNSBL|HANGUP' => ((PREGREET and DNSBL) or HANGUP)"
     print   "   <-f|--file>     log file to parse (default to /var/log/maillog)"
     print   "   <-g|--geoloc>   /!\ slow ! ip geoloc against hostip.info (default disabled)"
     print   "   <-i|--ip>       filters the results on a specific IP"
@@ -40,19 +44,41 @@ def gen_unix_ts(syslog_date):
     if unix_ts > time.mktime(NOW.timetuple()):
         print   "Time is in the future... what the heck ?"
         print   "Are you really parsing logs from " + YEAR + " ?"
+        sys.exit()
     else:
         return unix_ts
 
 # each client's statistics are stored in the class below
 class ClientStat:
     def __init__(self):
-        self.logs = defaultdict(int)    # store the logs in a dictionary
+        self.logs = defaultdict(int)    # connection logs
+        self.actions = defaultdict(int) # postscreen action logs
         self.dnsbl_ranks = []           # list of ranks triggered when blocked
+
+    # return true if the object matches the ACTION_FILTER
+    def action_filter(self,filter):
+        _pass_action_filter = 0
+        # if the ACTION_FILTER is defined, iterate through the action 
+        # and process only the clients with a matching action
+        if filter == None:
+            _pass_action_filter = 1
+        else:
+            for or_action in filter.split("|"):
+                if _pass_action_filter == 0:
+                    for and_action in or_action.split("&"):
+                        if self.actions[and_action] > 0:
+                            _pass_action_filter = 1
+                        else:
+                            _pass_action_filter = 0
+        if _pass_action_filter == 1:
+            return True
+        return False
 
 # VARIABLES
 IP_REGEXP = "((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}" \
             "(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))"
 IP_FILTER = "."
+ACTION_FILTER = None
 NOW = datetime.datetime.now()
 YEAR = NOW.year
 REPORT_MODE = "short"
@@ -64,9 +90,11 @@ ip_list = {}
 
 # command line arguments
 args_list, remainder = getopt.getopt(sys.argv[1:],
-    'gi:f:y:r:h', ['geoloc','ip=','year=','report=','help', 'file='])
+    'a:gi:f:y:r:h', ['action=','geoloc','ip=','year=','report=','help', 'file='])
 
 for argument, value in args_list:
+    if argument in ('-a', '--action'):
+        ACTION_FILTER = str(value)
     if argument in ('-g', '--geoloc'):
         GEOLOC = 1
     if argument in ('-f', '--file'):
@@ -97,7 +125,7 @@ for line in maillog:
     # Get postscreen logs only
     if "postfix/postscreen" in line:
         # apply the user defilter filter
-        if re.search(IP_FILTER,line):
+        if re.match(IP_FILTER,line):
             # parse the log line
             line_fields = line.split(None, 6)
             
@@ -140,67 +168,71 @@ for line in maillog:
             elif current_ip in ip_list:
                     if re.match("^PASS$", line_fields[5]):
                         if re.search("^OLD", line_fields[6]):
-                            ip_list[current_ip].logs["PASS OLD"] += 1
+                            ip_list[current_ip].actions["PASS OLD"] += 1
     
                             # if the connection count is 2, and the IP has already
                             # been rejected with a code 450 calculate the
                             # reconnection delay
                             if (ip_list[current_ip].logs["CONNECT"] == 2 
                                 and ip_list[current_ip].\
-                                logs["NOQUEUE 450 deep protocol test reconnection"] > 0):
+                                actions["NOQUEUE 450 deep protocol test reconnection"] > 0):
                                 ip_list[current_ip].logs["RECO. DELAY (graylist)"] = \
                                     ip_list[current_ip].logs["LAST SEEN"] \
                                     - ip_list[current_ip].logs["FIRST SEEN"]
 
                         elif re.search("^NEW", line_fields[6]):
-                            ip_list[current_ip].logs["PASS NEW"] += 1 
+                            ip_list[current_ip].actions["PASS NEW"] += 1 
     
                     elif re.match("^NOQUEUE:$", line_fields[5]):
                         if re.search("too many connections", line_fields[6]):
-                            ip_list[current_ip].logs["NOQUEUE too many connections"] += 1
+                            ip_list[current_ip].actions["NOQUEUE too many connections"] += 1
                         elif re.search("all server ports busy", line_fields[6]):
-                            ip_list[current_ip].logs["NOQUEUE all server ports busy"] += 1
+                            ip_list[current_ip].actions["NOQUEUE all server ports busy"] += 1
                         elif re.search("450 4.3.2 Service currently unavailable",line_fields[6]):
-                            ip_list[current_ip].logs["NOQUEUE 450 deep protocol test reconnection"] += 1
+                            ip_list[current_ip].actions["NOQUEUE 450 deep protocol test reconnection"] += 1
  
                     elif re.match("^HANGUP$", line_fields[5]):
-                        ip_list[current_ip].logs["HANGUP"] += 1
+                        ip_list[current_ip].actions["HANGUP"] += 1
     
                     elif re.match("^DNSBL$", line_fields[5]):
-                        ip_list[current_ip].logs["DNSBL"] += 1
+                        ip_list[current_ip].actions["DNSBL"] += 1
                         # store the rank
                         rank_line = line_fields[6].split(None)
                         ip_list[current_ip].dnsbl_ranks.append(rank_line[1])
     
                     elif re.match("^PREGREET$", line_fields[5]):
-                        ip_list[current_ip].logs["PREGREET"] += 1
+                        ip_list[current_ip].actions["PREGREET"] += 1
     
                     elif re.match("^COMMAND$", line_fields[5]):
                         if re.search("^PIPELINING", line_fields[6]):
-                            ip_list[current_ip].logs["COMMAND PIPELINING"] += 1
+                            ip_list[current_ip].actions["COMMAND PIPELINING"] += 1
     
                         elif re.search("^TIME LIMIT", line_fields[6]):
-                            ip_list[current_ip].logs["COMMAND TIME LIMIT"] += 1
+                            ip_list[current_ip].actions["COMMAND TIME LIMIT"] += 1
     
                         elif re.search("^COUNT LIMIT", line_fields[6]):
-                            ip_list[current_ip].logs["COMMAND COUNT LIMIT"] += 1
+                            ip_list[current_ip].actions["COMMAND COUNT LIMIT"] += 1
     
                         elif re.search("^LENGTH LIMIT", line_fields[6]):
-                            ip_list[current_ip].logs["COMMAND LENGTH LIMIT"] += 1
+                            ip_list[current_ip].actions["COMMAND LENGTH LIMIT"] += 1
     
                     elif re.match("^WHITELISTED$", line_fields[5]):
-                        ip_list[current_ip].logs["WHITELISTED"] += 1
+                        ip_list[current_ip].actions["WHITELISTED"] += 1
     
                     elif re.match("^BLACKLISTED$", line_fields[5]):
-                        ip_list[current_ip].logs["BLACKLISTED"] += 1
+                        ip_list[current_ip].actions["BLACKLISTED"] += 1
 
                     elif re.match("^BARE$", line_fields[5]):
                         if re.search("^NEWLINE", line_fields[6]):
-                            ip_list[current_ip].logs["BARE NEWLINE"] += 1
+                            ip_list[current_ip].actions["BARE NEWLINE"] += 1
+
+                    elif re.match("^NON-SMTP$", line_fields[5]):
+                        if re.search("^COMMAND", line_fields[6]):
+                            ip_list[current_ip].actions["NON-SMTP COMMAND"] += 1
 
                     elif re.match("^WHITELIST$", line_fields[5]):
                         if re.search("^VETO", line_fields[6]):
-                            ip_list[current_ip].logs["WHITELIST VETO"] += 1
+                            ip_list[current_ip].actions["WHITELIST VETO"] += 1
 
 # done with the log file
 maillog.close
@@ -208,15 +240,17 @@ maillog.close
 
 # additional reports shown in full mode only
 if REPORT_MODE in ('full','ip'):
-
     for client in ip_list:
-        print   client
-        for action in sorted(ip_list[client].logs):
-            if action in ('FIRST SEEN','LAST SEEN'):
-                print "\t",action,":",datetime.datetime.fromtimestamp\
-                    (int(ip_list[client].logs[action])).strftime('%Y-%m-%d %H:%M:%S')
+        print client
+        for log in sorted(ip_list[client].logs):
+            if log in ('FIRST SEEN','LAST SEEN'):
+                print "\t",log,":",datetime.datetime.fromtimestamp\
+                    (int(ip_list[client].logs[log])).strftime('%Y-%m-%d %H:%M:%S')
             else:
-                print "\t",action,":",ip_list[client].logs[action]
+                print "\t",log,":",ip_list[client].logs[log]
+        print "\t--- postscreen actions ---"
+        for action in sorted(ip_list[client].actions):
+            print "\t",action,":",ip_list[client].actions[action]
             if action in ('DNSBL'):
                 print "\tDNSBL ranks:",ip_list[client].dnsbl_ranks
 
@@ -232,6 +266,10 @@ if REPORT_MODE in ('short','full'):
     # basic accounting, browse through the list of objects and count
     # the occurences
     for client in ip_list:
+        # go to the next client if this one doesn't match the action filter
+        if not ip_list[client].action_filter(ACTION_FILTER):
+            continue
+
         clients["clients"] += 1
         # calculate the average reconnection delay (graylist)
         if ip_list[client].logs["RECO. DELAY (graylist)"] > 0:
@@ -258,38 +296,52 @@ if REPORT_MODE in ('short','full'):
             else:
                 comeback['>24h'] += 1;
 
-        for action in sorted(ip_list[client].logs):
-            if action not in ('FIRST SEEN','LAST SEEN', 'RECO. DELAY (graylist)', 'COUNTRY'):
-                postscreen_stats[action] += ip_list[client].logs[action]
+        for action in sorted(ip_list[client].actions):
+            postscreen_stats[action] += ip_list[client].actions[action]
+
 
         # calculate the average DNSBL trigger level
-        if ip_list[client].logs["DNSBL"] > 0:
+        if ip_list[client].actions["DNSBL"] > 0:
             for rank in ip_list[client].dnsbl_ranks:
                 clients["avg. dnsbl rank"] += int(rank)
 
         # if client was blocked at any point, add its country to the count
         if ( GEOLOC == 1 and
-            (ip_list[client].logs["BLACKLISTED"] > 0
-            or ip_list[client].logs["DNSBL"] > 0
-            or ip_list[client].logs["PREGREET"] > 0
-            or ip_list[client].logs["COMMAND PIPELINING"] > 0
-            or ip_list[client].logs["COMMAND TIME LIMIT"] > 0
-            or ip_list[client].logs["COMMAND COUNT LIMIT"] > 0
-            or ip_list[client].logs["COMMAND LENGTH LIMIT"] > 0)):
+            (ip_list[client].actions["BLACKLISTED"] > 0
+            or ip_list[client].actions["DNSBL"] > 0
+            or ip_list[client].actions["PREGREET"] > 0
+            or ip_list[client].actions["COMMAND PIPELINING"] > 0
+            or ip_list[client].actions["COMMAND TIME LIMIT"] > 0
+            or ip_list[client].actions["COMMAND COUNT LIMIT"] > 0
+            or ip_list[client].actions["COMMAND LENGTH LIMIT"] > 0
+            or ip_list[client].actions["BARE NEWLINE"] > 0
+            or ip_list[client].actions["NON-SMTP COMMAND"] > 0)):
             blocked_countries[ip_list[client].logs["COUNTRY"]] += 1
 
+    # calculate the average reconnection delay
     if clients["reconnections"] > 0:
         clients["seconds avg. reco. delay"] /= clients["reconnections"]
 
+    # calculate the average DNSBL trigger rank
     if (postscreen_stats["DNSBL"] > 0 and clients["avg. dnsbl rank"] > 0):
         clients["avg. dnsbl rank"] /= postscreen_stats["DNSBL"]
 
-    # display
-    print "\n=== Postscreen statistics ==="
-    for stat in sorted(postscreen_stats):
-        print postscreen_stats[stat],stat
+    # display unique clients and total postscreen actions
+    print "\n=== unique clients/total postscreen actions ==="
+    # print the count of CONNECT first (apply the ACTION_FILTER)
+    print str(len([cs.logs['CONNECT'] for cs in ip_list.itervalues() \
+        if (cs.logs['CONNECT'] > 0 and cs.action_filter(ACTION_FILTER))])) \
+        + "/" + str(sum([cs.logs['CONNECT'] for cs in ip_list.itervalues() \
+        if (cs.logs['CONNECT'] > 0 and cs.action_filter(ACTION_FILTER))])) \
+        + " CONNECT"
+    # then print the list of actions, ACTION_FILTER was applied earlied
+    # when the postscreen_stats dictionary was built
+    for action in sorted(postscreen_stats):
+        print str(len([cs.actions[action] for cs in ip_list.itervalues() \
+            if (cs.actions[action] > 0 and cs.action_filter(ACTION_FILTER))])) \
+            + "/" + str(postscreen_stats[action]),action
 
-    print "\n=== Clients statistics ==="
+    print "\n=== clients statistics ==="
     for stat in sorted(clients):
         print clients[stat],stat
 
@@ -331,3 +383,4 @@ if REPORT_MODE in ('short','full'):
         sorted_countries = blocked_countries.items()
         sorted_countries.sort(key = itemgetter(1), reverse=True)
         print sorted_countries
+
