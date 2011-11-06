@@ -58,6 +58,7 @@ class ClientStat:
     # return true if the object matches the ACTION_FILTER
     def action_filter(self,filter):
         _pass_action_filter = 0
+        _and_action_filter = 0
         # if the ACTION_FILTER is defined, iterate through the action 
         # and process only the clients with a matching action
         if filter == None:
@@ -65,11 +66,14 @@ class ClientStat:
         else:
             for or_action in filter.split("|"):
                 if _pass_action_filter == 0:
+                    _and_action_filter = 0
                     for and_action in or_action.split("&"):
-                        if self.actions[and_action] > 0 and _pass_action_filter >= 0:
-                            _pass_action_filter = 1
+                        if self.actions[and_action] > 0 and _and_action_filter >= 0:
+                            _and_action_filter = 1
                         else:
-                            _pass_action_filter = -1
+                            _and_action_filter = -1
+                    if _and_action_filter > 0:
+                        _pass_action_filter = 1
         if _pass_action_filter == 1:
             return True
         return False
