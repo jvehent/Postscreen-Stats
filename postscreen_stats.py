@@ -66,10 +66,10 @@ class ClientStat:
             for or_action in filter.split("|"):
                 if _pass_action_filter == 0:
                     for and_action in or_action.split("&"):
-                        if self.actions[and_action] > 0:
+                        if self.actions[and_action] > 0 and _pass_action_filter >= 0:
                             _pass_action_filter = 1
                         else:
-                            _pass_action_filter = 0
+                            _pass_action_filter = -1
         if _pass_action_filter == 1:
             return True
         return False
