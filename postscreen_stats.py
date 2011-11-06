@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Parses the postscreen logs and display stats
-# jvehent - 20111103
+# jvehent - 20111106
 
 import re
 import time
