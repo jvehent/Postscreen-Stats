@@ -20,9 +20,10 @@ def usage():
     print
     print   "usage: postscreen_stats.py <-y|--year> <-r|--report|-f|--full>"
     print
-    print   "   <-a|--action>   basic action filter ('PREGREET', 'DNSBL|BARE NEWLINE', ...)"
-    print   "                   operators | and & can be used. & has priority over |"
+    print   "   <-a|--action>   action filter with operators | and &"
     print   "                   ex. 'PREGREET&DNSBL|HANGUP' => ((PREGREET and DNSBL) or HANGUP)"
+    print   "                   ex. 'HANGUP&DNSBL|PREGREET&DNSBL' "
+    print   "                           => ((HANGUP and DNSBL) or (PREGREET and DNSBL)"
     print   "   <-f|--file>     log file to parse (default to /var/log/maillog)"
     print   "   <-g|--geoloc>   /!\ slow ! ip geoloc against hostip.info (default disabled)"
     print   "   <-i|--ip>       filters the results on a specific IP"
