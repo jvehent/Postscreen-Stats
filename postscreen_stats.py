@@ -399,6 +399,7 @@ if REPORT_MODE in ('short','full'):
         print str(Decimal(comeback['>24h'])/dec_cameback * 100).ljust(8) + "|"
 
     if GEOLOC > 0:
+        total_blocked = Decimal(clients["blocked clients"])
         print "\n=== Top 20 Countries of Blocked Clients ==="
         from operator import itemgetter
         sorted_countries = blocked_countries.items()
@@ -406,4 +407,4 @@ if REPORT_MODE in ('short','full'):
         for i in range(20):
             if i < len(sorted_countries):
                 country,clients = sorted_countries[i]
-                print clients, country
+                print clients, country, "(" + str(Decimal(clients)/total_blocked*100) + "%)"
