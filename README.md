@@ -88,3 +88,11 @@ Use the '-g' switch to activate geolocalisation against hostip.info. At the mome
     === Blocked IPs per country ===
     [('XX', 238), ('US', 162), ('IN', 21), ('ID', 10), ('RU', 9), ('EU', 5), ('VN', 4), ('BR', 3), ('DE', 3), ('CO', 3), ('CA', 3), ('KR', 3), ('UK', 3), ('JP', 2), ('RO', 2), ('CN', 2), ('IT', 2), ('AR', 2), ('AU', 2), ('KZ', 2), ('MX', 2), ('FR', 1), ('BG', 1), ('BO', 1), ('NL', 1), ('PT', 1), ('TW', 1), ('TR', 1), ('TN', 1), ('LT', 1), ('PA', 1), ('PK', 1), ('PH', 1), ('PL', 1), ('CM', 1), ('IQ', 1), ('CZ', 1), ('ES', 1), ('SZ', 1), ('KE', 1), ('MW', 1), ('SA', 1), ('UA', 1)]
 
+Geo IP database installation
+-----------------------------------
+Using the MaxMind free database at http://www.maxmind.com/app/geolitecity
+    1. Download the database and extract GeoLiteCity.dat at the location of your choice
+    2. install the GeoIP maxmind package
+        # aptitude install python-geoip
+    3. launch postscreen_stats with --geofile="/path/to/geolistcity.dat"
+

@@ -26,6 +26,8 @@ def usage():
     print   "                           => ((HANGUP and DNSBL) or (PREGREET and DNSBL)"
     print   "   <-f|--file>     log file to parse (default to /var/log/maillog)"
     print   "   <-g|--geoloc>   /!\ slow ! ip geoloc against hostip.info (default disabled)"
+    print   "   <--geofile>     path to a maxmind geolitecity.dat. if specified, with the -g switch"
+    print   "                   the script uses the maxmind data instead of hostip.info (faster)"
     print   "   <-i|--ip>       filters the results on a specific IP"
     print   "   <-r|--report>   report mode {short|full|ip} (default to short)"
     print   "   <-y|--year>     select the year of the logs (default to current year)"
@@ -55,6 +57,7 @@ class ClientStat:
         self.logs = defaultdict(int)    # connection logs
         self.actions = defaultdict(int) # postscreen action logs
         self.dnsbl_ranks = []           # list of ranks triggered when blocked
+        self.geoloc = defaultdict(int)
 
     # return true if the object matches the ACTION_FILTER
     def action_filter(self,filter):
@@ -89,27 +92,33 @@ YEAR = NOW.year
 REPORT_MODE = "short"
 LOGFILE = "/var/log/maillog"
 GEOLOC = 0
+
 # the list of clients ips and pointer to instance of class
 ip_list = {}
 
 
 # command line arguments
 args_list, remainder = getopt.getopt(sys.argv[1:],
-    'a:gi:f:y:r:h', ['action=','geoloc','ip=','year=','report=','help', 'file='])
+    'a:gi:f:y:r:h', ['action=','geoloc','geofile=','ip=','year=','report=','help', 'file='])
 
 for argument, value in args_list:
     if argument in ('-a', '--action'):
         ACTION_FILTER = str(value)
-    if argument in ('-g', '--geoloc'):
+    elif argument in ('-g', '--geoloc'):
         GEOLOC = 1
-    if argument in ('-f', '--file'):
+    elif argument in ('--geofile'):
+        import GeoIP
+        gi = GeoIP.open(value,GeoIP.GEOIP_MEMORY_CACHE)
+        print "using MaxMind GeoIP database from",value
+        GEOLOC = 2
+    elif argument in ('-f', '--file'):
         LOG_FILE = value
-    if argument in ('-y', '--year'):
+    elif argument in ('-y', '--year'):
         YEAR = value
-    if argument in ('-i', '--ip'):
+    elif argument in ('-i', '--ip'):
         IP_FILTER = value
         print "Filtering results to match:",IP_FILTER
-    if argument in ('-r', '--report'):
+    elif argument in ('-r', '--report'):
         if value in ('short'):
             REPORT_MODE = "short"
         elif value in ('full'):
@@ -120,7 +129,7 @@ for argument, value in args_list:
             print "unknown report type"
             usage()
             sys.exit()
-    if argument in ('-h', '--help'):
+    elif argument in ('-h', '--help'):
         usage()
         sys.exit()
 
@@ -152,13 +161,17 @@ for line in maillog:
                     ip_list[current_ip].logs["FIRST SEEN"] = \
                         gen_unix_ts(syslog_date) 
                     ip_list[current_ip].logs["LAST SEEN"] = \
-                        gen_unix_ts(syslog_date) 
-                    if GEOLOC == 1:
-                        # geo localise ip
-                        geoloc_url = "http://api.hostip.info/country.php?ip=" \
-                            + current_ip
-                        ip_list[current_ip].logs["COUNTRY"] = \
-                            urllib.urlopen(geoloc_url).read()
+                        gen_unix_ts(syslog_date)
+                    # perform geo localisation
+                    if GEOLOC > 0:
+                        if GEOLOC == 1:
+                            # geo localise ip
+                            geoloc_url = "http://api.hostip.info/country.php?ip=" \
+                                + current_ip
+                            ip_list[current_ip].geoloc["country_code"] = \
+                                urllib.urlopen(geoloc_url).read()
+                        elif GEOLOC == 2:
+                            ip_list[current_ip].geoloc = gi.record_by_addr(current_ip)
 
                 # ip is already known, update the last_seen timestamp
                 else:
@@ -258,6 +271,8 @@ if REPORT_MODE in ('full','ip'):
             print "\t",action,":",ip_list[client].actions[action]
             if action in ('DNSBL'):
                 print "\tDNSBL ranks:",ip_list[client].dnsbl_ranks
+        if GEOLOC > 0:
+            print "\tGeoLoc:",ip_list[client].geoloc
 
 # normal report mode
 if REPORT_MODE in ('short','full'):
@@ -311,7 +326,7 @@ if REPORT_MODE in ('short','full'):
                 clients["avg. dnsbl rank"] += int(rank)
 
         # if client was blocked at any point, add its country to the count
-        if ( GEOLOC == 1 and
+        if ( GEOLOC > 0 and
             (ip_list[client].actions["BLACKLISTED"] > 0
             or ip_list[client].actions["DNSBL"] > 0
             or ip_list[client].actions["PREGREET"] > 0
@@ -321,7 +336,7 @@ if REPORT_MODE in ('short','full'):
             or ip_list[client].actions["COMMAND LENGTH LIMIT"] > 0
             or ip_list[client].actions["BARE NEWLINE"] > 0
             or ip_list[client].actions["NON-SMTP COMMAND"] > 0)):
-            blocked_countries[ip_list[client].logs["COUNTRY"]] += 1
+            blocked_countries[ip_list[client].geoloc["country_name"]] += 1
 
     # calculate the average reconnection delay
     if clients["reconnections"] > 0:
@@ -382,10 +397,11 @@ if REPORT_MODE in ('short','full'):
         sys.stdout.write(str(Decimal(comeback['>12h to 24h'])/dec_cameback * 100).ljust(8) + "|")
         print str(Decimal(comeback['>24h'])/dec_cameback * 100).ljust(8) + "|"
 
-    if GEOLOC == 1:
-        print "\n=== Blocked IPs per country ==="
+    if GEOLOC > 0:
+        print "\n=== Top 20 Blocked Countries ==="
         from operator import itemgetter
         sorted_countries = blocked_countries.items()
         sorted_countries.sort(key = itemgetter(1), reverse=True)
-        print sorted_countries
+        for i in range(20):
+            print sorted_countries[i]
 
