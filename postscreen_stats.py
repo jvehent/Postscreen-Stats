@@ -337,6 +337,7 @@ if REPORT_MODE in ('short','full'):
             or ip_list[client].actions["BARE NEWLINE"] > 0
             or ip_list[client].actions["NON-SMTP COMMAND"] > 0)):
             blocked_countries[ip_list[client].geoloc["country_name"]] += 1
+            clients["blocked clients"] += 1
 
     # calculate the average reconnection delay
     if clients["reconnections"] > 0:
@@ -398,10 +399,11 @@ if REPORT_MODE in ('short','full'):
         print str(Decimal(comeback['>24h'])/dec_cameback * 100).ljust(8) + "|"
 
     if GEOLOC > 0:
-        print "\n=== Top 20 Blocked Countries ==="
+        print "\n=== Top 20 Countries of Blocked Clients ==="
         from operator import itemgetter
         sorted_countries = blocked_countries.items()
         sorted_countries.sort(key = itemgetter(1), reverse=True)
         for i in range(20):
-            print sorted_countries[i]
-
+            if i < len(sorted_countries):
+                country,clients = sorted_countries[i]
+                print clients, country
