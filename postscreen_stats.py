@@ -41,7 +41,7 @@ def gen_unix_ts(syslog_date):
     # add the year
     syslog_date = str(YEAR) + " " + syslog_date
     ts = time.strptime(syslog_date, '%Y %b %d %H:%M:%S')
-    unix_ts = calendar.timegm(ts)
+    unix_ts = time.mktime(ts)
 
     # check if the unix_ts is not in the future
     if unix_ts > time.mktime(NOW.timetuple()):
