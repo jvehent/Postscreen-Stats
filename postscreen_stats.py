@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Parses the postscreen logs and display stats
-# jvehent - 20111106
+# jvehent - 20120113
 
 import re
 import time
@@ -38,15 +38,16 @@ def usage():
 def gen_unix_ts(syslog_date):
     ts = 0
     unix_ts = 0
+    now_ts = datetime.datetime.now()
     # add the year
     syslog_date = str(YEAR) + " " + syslog_date
     ts = time.strptime(syslog_date, '%Y %b %d %H:%M:%S')
     unix_ts = time.mktime(ts)
 
     # check if the unix_ts is not in the future
-    if unix_ts > time.mktime(NOW.timetuple()):
+    if unix_ts > time.mktime(now_ts.timetuple()):
         print   "Time is in the future... what the heck ?"
-        print   "Are you really parsing logs from " + YEAR + " ?"
+        print   "Are you really parsing logs from " + str(YEAR) + " ?"
         sys.exit()
     else:
         return unix_ts
@@ -327,6 +328,7 @@ if REPORT_MODE in ('short','full'):
 
         # if client was blocked at any point, add its country to the count
         if ( GEOLOC > 0 and
+        ip_list[client].geoloc > 0 and
             (ip_list[client].actions["BLACKLISTED"] > 0
             or ip_list[client].actions["DNSBL"] > 0
             or ip_list[client].actions["PREGREET"] > 0
@@ -407,4 +409,5 @@ if REPORT_MODE in ('short','full'):
         for i in range(20):
             if i < len(sorted_countries):
                 country,clients = sorted_countries[i]
-                print clients, country, "(" + str(Decimal(clients)/total_blocked*100) + "%)"
+                cpercent = "(%5.2f%%)" % float(Decimal(clients)/total_blocked*100)
+                print "%4d" % clients, cpercent, country
