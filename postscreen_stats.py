@@ -538,11 +538,7 @@ if MAPDEST not in "" and GEOLOC > 1:
         <h1>Postscreen Map of Blocked IPs</h1>
         <div id="map">
         </div>
-<<<<<<< HEAD
         <p>mapping ''' + str(len(blocked_clients)) + ''' blocked IPs</p>
-=======
-        <p>Mapped ''' + str(len(blocked_clients))) + ''' IPs</p>
->>>>>>> e01f281cc299ebac9d7090e6fbeb9cac3820ed8d
         <p>generated using <a href="https://github.com/jvehent/Postscreen-Stats">Postscreen-Stats</a> by <a href="http://1nw.eu/!j">Julien Vehent</a></p>
     </body>
 </html>
