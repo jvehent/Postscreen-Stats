@@ -500,18 +500,18 @@ if MAPDEST not in "" and GEOLOC > 1:
             for action in sorted(ip_list[client].actions):
                 if ip_list[client].actions[action] > 0:
                     mapcode = mapcode + '<p>' + action + ": " + str(ip_list[client].actions[action]) + '''</p>' +
-                        ' '''
+                    ' '''
                     if action in ('DNSBL'):
                         mapcode = mapcode + '<p>' + "DNSBL ranks: "
                         for rank in ip_list[client].dnsbl_ranks: 
                             mapcode = mapcode + " " + str(rank) + ","
                         mapcode = mapcode + '''</p>' +
-                        ' '''
+                    ' '''
             if ip_list[client].geoloc.has_key('city'):
                 mapcode = mapcode + '<p>' + 'Location: ' + \
                     re.escape(str(ip_list[client].geoloc['city'])) + ", " + \
                     re.escape(str(ip_list[client].geoloc['country_code'])) +  '''<p> ' +
-                ' '''
+                    ' '''
                     
             mapcode = mapcode +  '''</div></div>';
                 var infowindow''' + str(incr) + ''' = new google.maps.InfoWindow({
@@ -538,7 +538,11 @@ if MAPDEST not in "" and GEOLOC > 1:
         <h1>Postscreen Map of Blocked IPs</h1>
         <div id="map">
         </div>
+<<<<<<< HEAD
         <p>mapping ''' + str(len(blocked_clients)) + ''' blocked IPs</p>
+=======
+        <p>Mapped ''' + str(len(blocked_clients))) + ''' IPs</p>
+>>>>>>> e01f281cc299ebac9d7090e6fbeb9cac3820ed8d
         <p>generated using <a href="https://github.com/jvehent/Postscreen-Stats">Postscreen-Stats</a> by <a href="http://1nw.eu/!j">Julien Vehent</a></p>
     </body>
 </html>
