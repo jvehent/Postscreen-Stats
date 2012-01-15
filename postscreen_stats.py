@@ -12,27 +12,40 @@ import sys
 import urllib
 from collections import defaultdict
 from decimal import *
+from types import *
 
 def usage():
-    print
-    print   "   postscreen_stats.py"
-    print   "   parses postfix logs to compute statistics on postscreen activity"
-    print
-    print   "usage: postscreen_stats.py <-y|--year> <-r|--report|-f|--full>"
-    print
-    print   "   <-a|--action>   action filter with operators | and &"
-    print   "                   ex. 'PREGREET&DNSBL|HANGUP' => ((PREGREET and DNSBL) or HANGUP)"
-    print   "                   ex. 'HANGUP&DNSBL|PREGREET&DNSBL' "
-    print   "                           => ((HANGUP and DNSBL) or (PREGREET and DNSBL)"
-    print   "   <-f|--file>     log file to parse (default to /var/log/maillog)"
-    print   "   <-g|--geoloc>   /!\ slow ! ip geoloc against hostip.info (default disabled)"
-    print   "   <--geofile>     path to a maxmind geolitecity.dat. if specified, with the -g switch"
-    print   "                   the script uses the maxmind data instead of hostip.info (faster)"
-    print   "   <-i|--ip>       filters the results on a specific IP"
-    print   "   <-r|--report>   report mode {short|full|ip} (default to short)"
-    print   "   <-y|--year>     select the year of the logs (default to current year)"
-    print
+    print   '''
+    postscreen_stats.py
+        parses postfix logs to compute statistics on postscreen activity
 
+    usage: postscreen_stats.py <-y|--year> <-r|--report|-f|--full>
+   
+    <-a|--action>   action filter with operators | and &
+                        ex. 'PREGREET&DNSBL|HANGUP' => ((PREGREET and DNSBL) or HANGUP)
+                        ex. 'HANGUP&DNSBL|PREGREET&DNSBL' 
+                            => ((HANGUP and DNSBL) or (PREGREET and DNSBL)
+
+    <-f|--file>     log file to parse (default to /var/log/maillog)
+
+    <-g|--geoloc>   /!\ slow ! ip geoloc against hostip.info (default disabled)
+
+    <--geofile>     path to a maxmind geolitecity.dat. if specified, with the -g switch
+                   the script uses the maxmind data instead of hostip.info (faster)
+
+    <-G>            when using --geofile, use the pygeoip module instead of the GeoIP module
+
+    <-i|--ip>       filters the results on a specific IP
+
+    <--mapdest>     path to a destination HTML file that will display a Google Map of the result
+                    /!\ Require the geolocation, preferably with --geofile
+
+    <-r|--report>   report mode {short|full|ip|none} (default to short)
+
+    <-y|--year>     select the year of the logs (default to current year)
+
+Julien Vehent (http://1nw.eu/!j) - https://github.com/jvehent/Postscreen-Stats
+'''
 
 # convert the syslog time stamp in unix format and store it
 def gen_unix_ts(syslog_date):
@@ -93,6 +106,8 @@ YEAR = NOW.year
 REPORT_MODE = "short"
 LOG_FILE = "/var/log/maillog"
 GEOLOC = 0
+GEOFILE = ""
+MAPDEST = ""
 
 # the list of clients ips and pointer to instance of class
 ip_list = {}
@@ -100,7 +115,7 @@ ip_list = {}
 
 # command line arguments
 args_list, remainder = getopt.getopt(sys.argv[1:],
-    'a:gi:f:y:r:h', ['action=','geoloc','geofile=','ip=','year=','report=','help', 'file='])
+    'a:gGi:f:y:r:h', ['action=','geoloc','geofile=','mapdest=','ip=','year=','report=','help', 'file='])
 
 for argument, value in args_list:
     if argument in ('-a', '--action'):
@@ -108,10 +123,11 @@ for argument, value in args_list:
     elif argument in ('-g', '--geoloc'):
         GEOLOC = 1
     elif argument in ('--geofile'):
-        import GeoIP
-        gi = GeoIP.open(value,GeoIP.GEOIP_MEMORY_CACHE)
-        print "using MaxMind GeoIP database from",value
-        GEOLOC = 2
+        GEOFILE = value
+        if GEOLOC < 2:
+            GEOLOC = 2
+    elif argument in ('-G'):
+        GEOLOC = 3
     elif argument in ('-f', '--file'):
         LOG_FILE = value
     elif argument in ('-y', '--year'):
@@ -120,19 +136,27 @@ for argument, value in args_list:
         IP_FILTER = value
         print "Filtering results to match:",IP_FILTER
     elif argument in ('-r', '--report'):
-        if value in ('short'):
-            REPORT_MODE = "short"
-        elif value in ('full'):
-            REPORT_MODE = "full"
-        elif value in ('ip'):
-            REPORT_MODE = "ip"
+        if value in ('short','full','ip','none'):
+            REPORT_MODE = value
         else:
             print "unknown report type"
             usage()
             sys.exit()
+    elif argument in ('--mapdest'):
+        MAPDEST = value
+        print "Google map will be generated at",MAPDEST
     elif argument in ('-h', '--help'):
         usage()
         sys.exit()
+
+if GEOLOC > 0 and GEOFILE not in "":
+    if GEOLOC == 2:
+        import GeoIP
+        gi = GeoIP.open(GEOFILE,GeoIP.GEOIP_MEMORY_CACHE)
+    elif GEOLOC == 3:
+        import pygeoip
+        gi = pygeoip.GeoIP(GEOFILE,pygeoip.MEMORY_CACHE)
+    print "using MaxMind GeoIP database from",GEOFILE
 
 maillog = open(LOG_FILE)
 
@@ -171,7 +195,7 @@ for line in maillog:
                                 + current_ip
                             ip_list[current_ip].geoloc["country_code"] = \
                                 urllib.urlopen(geoloc_url).read()
-                        elif GEOLOC == 2:
+                        elif GEOLOC > 1:
                             ip_list[current_ip].geoloc = gi.record_by_addr(current_ip)
 
                 # ip is already known, update the last_seen timestamp
@@ -274,15 +298,23 @@ if REPORT_MODE in ('full','ip'):
                 print "\tDNSBL ranks:",ip_list[client].dnsbl_ranks
         if GEOLOC > 0:
             print "\tGeoLoc:",ip_list[client].geoloc
+        print
+
+
+# store the list of blocked clients for map generation
+if MAPDEST not in "" and GEOLOC > 1:
+    blocked_clients = defaultdict(int)
+
+postscreen_stats = defaultdict(int)
+clients = defaultdict(int)
+comeback = {'<10s':0, '>10s to 30s':0, '>30s to 1min':0, '>1min to 5min':0,
+            '>5 min to 30min':0, '>30min to 2h':0, '>2h to 5h':0,
+            '>5h to 12h':0, '>12h to 24h':0, '>24h':0}
+blocked_countries = defaultdict(int)
+
 
 # normal report mode
-if REPORT_MODE in ('short','full'):
-    postscreen_stats = defaultdict(int)
-    clients = defaultdict(int)
-    comeback = {'<10s':0, '>10s to 30s':0, '>30s to 1min':0, '>1min to 5min':0,
-                '>5 min to 30min':0, '>30min to 2h':0, '>2h to 5h':0,
-                '>5h to 12h':0, '>12h to 24h':0, '>24h':0}
-    blocked_countries = defaultdict(int)
+if REPORT_MODE in ('short','full','none'):
      
     # basic accounting, browse through the list of objects and count
     # the occurences
@@ -328,7 +360,7 @@ if REPORT_MODE in ('short','full'):
 
         # if client was blocked at any point, add its country to the count
         if ( GEOLOC > 0 and
-        ip_list[client].geoloc > 0 and
+            ip_list[client].geoloc > 0 and
             (ip_list[client].actions["BLACKLISTED"] > 0
             or ip_list[client].actions["DNSBL"] > 0
             or ip_list[client].actions["PREGREET"] > 0
@@ -338,8 +370,11 @@ if REPORT_MODE in ('short','full'):
             or ip_list[client].actions["COMMAND LENGTH LIMIT"] > 0
             or ip_list[client].actions["BARE NEWLINE"] > 0
             or ip_list[client].actions["NON-SMTP COMMAND"] > 0)):
+
             blocked_countries[ip_list[client].geoloc["country_name"]] += 1
             clients["blocked clients"] += 1
+            if MAPDEST not in "" and GEOLOC > 1:
+                blocked_clients[client] = 1
 
     # calculate the average reconnection delay
     if clients["reconnections"] > 0:
@@ -349,6 +384,7 @@ if REPORT_MODE in ('short','full'):
     if (postscreen_stats["DNSBL"] > 0 and clients["avg. dnsbl rank"] > 0):
         clients["avg. dnsbl rank"] /= postscreen_stats["DNSBL"]
 
+if REPORT_MODE in ('short','full'):
     # display unique clients and total postscreen actions
     print "\n=== unique clients/total postscreen actions ==="
     # print the count of CONNECT first (apply the ACTION_FILTER)
@@ -411,3 +447,102 @@ if REPORT_MODE in ('short','full'):
                 country,clients = sorted_countries[i]
                 cpercent = "(%5.2f%%)" % float(Decimal(clients)/total_blocked*100)
                 print "%4d" % clients, cpercent, country
+
+# generate the HTML for the google map and store it in a file
+if MAPDEST not in "" and GEOLOC > 1:
+    mapcode = '''<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+        <title>Postscreen GeoMap of Blocked IPs</title>
+        <script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false"></script>
+        <script type="text/javascript">
+            window.onload = function() {
+                var center = new google.maps.LatLng(0,0);
+                var mapOptions = {
+                    zoom: 2,
+                    center: center,
+                    mapTypeId: google.maps.MapTypeId.TERRAIN
+                };
+                var myMap = new google.maps.Map(
+                    document.getElementById('map'),mapOptions
+                    );
+'''
+    incr = 0
+    for client in blocked_clients:
+        if  type(ip_list[client].geoloc) is not NoneType \
+            and ip_list[client].geoloc.has_key('latitude') \
+            and ip_list[client].geoloc.has_key('longitude'):
+
+            mapcode = mapcode + '''
+                var ip''' + str(incr) + '''= new google.maps.LatLng(''' \
+                    + str(ip_list[client].geoloc['latitude']) + "," \
+                    + str(ip_list[client].geoloc['longitude']) + ''');
+                var marker_ip'''+str(incr)+''' = new google.maps.Marker({
+                        position: ip''' + str(incr) + ''',
+                        map: myMap,
+                        title: "''' + str(client) + '''"
+                        });
+                var desc_ip''' + str(incr) + ''' = '<div id="content">' +
+                    '<div id="siteNotice"></div><h2 id="firstHeading" class="firstHeading">' +
+                    ' ''' + str(client) + '''</h2><div id="bodyContent">' +
+                    ' '''
+            for log in sorted(ip_list[client].logs):
+                if log in ('FIRST SEEN','LAST SEEN'):
+                    mapcode = mapcode + '<p>' + log + ": " + str(datetime.datetime.fromtimestamp\
+                        (int(ip_list[client].logs[log])).strftime('%Y-%m-%d %H:%M:%S'))\
+                        + '''</p>' +
+                    ' '''
+                else:
+                    mapcode = mapcode + '<p>' + log + ": " + str(ip_list[client].logs[log]) + '''</p>' +
+                    ' '''
+
+            for action in sorted(ip_list[client].actions):
+                if ip_list[client].actions[action] > 0:
+                    mapcode = mapcode + '<p>' + action + ": " + str(ip_list[client].actions[action]) + '''</p>' +
+                        ' '''
+                    if action in ('DNSBL'):
+                        mapcode = mapcode + '<p>' + "DNSBL ranks: "
+                        for rank in ip_list[client].dnsbl_ranks: 
+                            mapcode = mapcode + " " + str(rank) + ","
+                        mapcode = mapcode + '''</p>' +
+                        ' '''
+            if ip_list[client].geoloc.has_key('city'):
+                mapcode = mapcode + '<p>' + 'Location: ' + \
+                    re.escape(str(ip_list[client].geoloc['city'])) + ", " + \
+                    re.escape(str(ip_list[client].geoloc['country_code'])) +  '''<p> ' +
+                ' '''
+                    
+            mapcode = mapcode +  '''</div></div>';
+                var infowindow''' + str(incr) + ''' = new google.maps.InfoWindow({
+                    content: desc_ip''' + str(incr) + ''',
+                    maxWidth: 500
+                });
+                google.maps.event.addListener(marker_ip'''+str(incr)+''', 'click', function() {
+                    infowindow'''+str(incr)+'''.open(myMap,marker_ip'''+str(incr)+''');
+                });
+'''
+            incr += 1
+    mapcode = mapcode + '''
+            }
+        </script>
+        <style type="text/css">
+            #map {
+                width:100%;
+                height:800px;
+            }
+        </style>
+        
+    </head>
+    <body>
+        <h1>Postscreen Map of Blocked IPs</h1>
+        <div id="map">
+        </div>
+        <p>generated using <a href="https://github.com/jvehent/Postscreen-Stats">Postscreen-Stats</a> by <a href="http://1nw.eu/!j">Julien Vehent</a></p>
+    </body>
+</html>
+'''
+    fd = open(MAPDEST,"w")
+    fd.write(mapcode)
+    fd.close()
+    print "Creating HTML map at",MAPDEST
