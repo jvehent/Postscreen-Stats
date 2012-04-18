@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Parses the postscreen logs and display stats
-# jvehent - 20120113
+# jvehent - 20120418
 
 import re
 import time
@@ -44,6 +44,8 @@ usage: postscreen_stats.py -f mail.log
   
   -y|--year=    select the year of the logs (default to current year)
   
+  --rfc3339     to set the timestamp type to "2012-04-13T08:53:00+02:00" instead of the regular syslog format "Oct 23 04:02:17"
+
 example: $ ./postscreen_stats.py -f maillog.3 -r short -y 2011 --geofile=../geoip/GeoIPCity.dat -G --mapdest=postscreen_report_2012-01-15.html
 
 Julien Vehent (http://1nw.eu/!j) - https://github.com/jvehent/Postscreen-Stats
@@ -54,14 +56,22 @@ def gen_unix_ts(syslog_date):
     ts = 0
     unix_ts = 0
     now_ts = datetime.datetime.now()
-    # add the year
-    syslog_date = str(YEAR) + " " + syslog_date
-    ts = time.strptime(syslog_date, '%Y %b %d %H:%M:%S')
-    unix_ts = time.mktime(ts)
+    unix_ts = now_ts
+    if RFC3339:
+        date = syslog_date.split('+', 1)
+        # example format: 2012-04-13T08:53:00+02:00
+        ts = time.strptime(date[0], '%Y-%m-%dT%H:%M:%S')
+        unix_ts = time.mktime(ts)
+    else:
+        # add the year
+        syslog_date = str(YEAR) + " " + syslog_date
+        # example format: 2011 Oct 23 04:02:17
+        ts = time.strptime(syslog_date, '%Y %b %d %H:%M:%S')
+        unix_ts = time.mktime(ts)
 
     # check if the unix_ts is not in the future
     if unix_ts > time.mktime(now_ts.timetuple()):
-        print   "Time is in the future... what the heck ?"
+        print   "Time is in the future... ?"
         print   "Are you really parsing logs from " + str(YEAR) + " ?"
         sys.exit()
     else:
@@ -110,6 +120,10 @@ LOG_FILE = "/var/log/maillog"
 GEOLOC = 0
 GEOFILE = ""
 MAPDEST = ""
+RFC3339 = False
+
+# position of 'postfix/postscreen' inside the logs
+LOG_CURSOR = 5
 
 # the list of clients ips and pointer to instance of class
 ip_list = {}
@@ -117,7 +131,9 @@ ip_list = {}
 
 # command line arguments
 args_list, remainder = getopt.getopt(sys.argv[1:],
-    'a:gGi:f:y:r:h', ['action=','geoloc','geofile=','mapdest=','ip=','year=','report=','help', 'file='])
+    'a:gGi:f:y:r:h', ['action=','geoloc','geofile=',
+    'mapdest=','ip=','year=','report=','help', 'file=',
+    'rfc3339'])
 
 for argument, value in args_list:
     if argument in ('-a', '--action'):
@@ -134,6 +150,9 @@ for argument, value in args_list:
         LOG_FILE = value
     elif argument in ('-y', '--year'):
         YEAR = value
+    elif argument in ('--rfc3339'):
+        RFC3339 = True
+        LOG_CURSOR = 3
     elif argument in ('-i', '--ip'):
         IP_FILTER = value
         print "Filtering results to match:",IP_FILTER
@@ -168,17 +187,20 @@ for line in maillog:
         # apply the user defilter filter
         if re.match(IP_FILTER,line):
             # parse the log line
-            line_fields = line.split(None, 6)
+            line_fields = line.split(None, LOG_CURSOR+1)
             
             # parse the ip
             current_ip = '999.999.999.999'
-            if re.search(IP_REGEXP, line_fields[6]):
-                tmp = re.split(IP_REGEXP, line_fields[6], maxsplit=1)
+            if re.search(IP_REGEXP, line_fields[LOG_CURSOR+1]):
+                tmp = re.split(IP_REGEXP, line_fields[LOG_CURSOR+1], maxsplit=1)
                 current_ip = tmp[1]
                 del tmp
     
-            if re.match("^CONNECT$", line_fields[5]):
-                syslog_date =   line_fields[0] + " " + line_fields[1] + \
+            if re.match("^CONNECT$", line_fields[LOG_CURSOR]):
+                if RFC3339:
+                    syslog_date = line_fields[0]
+                else:
+                    syslog_date = line_fields[0] + " " + line_fields[1] + \
                                 " " + line_fields[2]
     
                 # first time we see the client, initiate a class instance
@@ -211,8 +233,8 @@ for line in maillog:
             # the string matching is organized to test the most probable
             # value first, to speed things up
             elif current_ip in ip_list:
-                    if re.match("^PASS$", line_fields[5]):
-                        if re.search("^OLD", line_fields[6]):
+                    if re.match("^PASS$", line_fields[LOG_CURSOR]):
+                        if re.search("^OLD", line_fields[LOG_CURSOR+1]):
                             ip_list[current_ip].actions["PASS OLD"] += 1
     
                             # if the connection count is 2, and the IP has already
@@ -225,58 +247,61 @@ for line in maillog:
                                     ip_list[current_ip].logs["LAST SEEN"] \
                                     - ip_list[current_ip].logs["FIRST SEEN"]
 
-                        elif re.search("^NEW", line_fields[6]):
+                        elif re.search("^NEW", line_fields[LOG_CURSOR+1]):
                             ip_list[current_ip].actions["PASS NEW"] += 1 
     
-                    elif re.match("^NOQUEUE:$", line_fields[5]):
-                        if re.search("too many connections", line_fields[6]):
+                    elif re.match("^NOQUEUE:$", line_fields[LOG_CURSOR]):
+                        if re.search("too many connections",
+                            line_fields[LOG_CURSOR+1]):
                             ip_list[current_ip].actions["NOQUEUE too many connections"] += 1
-                        elif re.search("all server ports busy", line_fields[6]):
+                        elif re.search("all server ports busy",
+                            line_fields[LOG_CURSOR]):
                             ip_list[current_ip].actions["NOQUEUE all server ports busy"] += 1
-                        elif re.search("450 4.3.2 Service currently unavailable",line_fields[6]):
+                        elif re.search("450 4.3.2 Service currently unavailable",
+                            line_fields[LOG_CURSOR+1]):
                             ip_list[current_ip].actions["NOQUEUE 450 deep protocol test reconnection"] += 1
  
-                    elif re.match("^HANGUP$", line_fields[5]):
+                    elif re.match("^HANGUP$", line_fields[LOG_CURSOR]):
                         ip_list[current_ip].actions["HANGUP"] += 1
     
-                    elif re.match("^DNSBL$", line_fields[5]):
+                    elif re.match("^DNSBL$", line_fields[LOG_CURSOR]):
                         ip_list[current_ip].actions["DNSBL"] += 1
                         # store the rank
-                        rank_line = line_fields[6].split(None)
+                        rank_line = line_fields[LOG_CURSOR+1].split(None)
                         ip_list[current_ip].dnsbl_ranks.append(rank_line[1])
     
-                    elif re.match("^PREGREET$", line_fields[5]):
+                    elif re.match("^PREGREET$", line_fields[LOG_CURSOR]):
                         ip_list[current_ip].actions["PREGREET"] += 1
     
-                    elif re.match("^COMMAND$", line_fields[5]):
-                        if re.search("^PIPELINING", line_fields[6]):
+                    elif re.match("^COMMAND$", line_fields[LOG_CURSOR]):
+                        if re.search("^PIPELINING", line_fields[LOG_CURSOR+1]):
                             ip_list[current_ip].actions["COMMAND PIPELINING"] += 1
     
-                        elif re.search("^TIME LIMIT", line_fields[6]):
+                        elif re.search("^TIME LIMIT", line_fields[LOG_CURSOR+1]):
                             ip_list[current_ip].actions["COMMAND TIME LIMIT"] += 1
     
-                        elif re.search("^COUNT LIMIT", line_fields[6]):
+                        elif re.search("^COUNT LIMIT", line_fields[LOG_CURSOR+1]):
                             ip_list[current_ip].actions["COMMAND COUNT LIMIT"] += 1
     
-                        elif re.search("^LENGTH LIMIT", line_fields[6]):
+                        elif re.search("^LENGTH LIMIT", line_fields[LOG_CURSOR+1]):
                             ip_list[current_ip].actions["COMMAND LENGTH LIMIT"] += 1
     
-                    elif re.match("^WHITELISTED$", line_fields[5]):
+                    elif re.match("^WHITELISTED$", line_fields[LOG_CURSOR]):
                         ip_list[current_ip].actions["WHITELISTED"] += 1
     
-                    elif re.match("^BLACKLISTED$", line_fields[5]):
+                    elif re.match("^BLACKLISTED$", line_fields[LOG_CURSOR]):
                         ip_list[current_ip].actions["BLACKLISTED"] += 1
 
-                    elif re.match("^BARE$", line_fields[5]):
-                        if re.search("^NEWLINE", line_fields[6]):
+                    elif re.match("^BARE$", line_fields[LOG_CURSOR]):
+                        if re.search("^NEWLINE", line_fields[LOG_CURSOR+1]):
                             ip_list[current_ip].actions["BARE NEWLINE"] += 1
 
-                    elif re.match("^NON-SMTP$", line_fields[5]):
-                        if re.search("^COMMAND", line_fields[6]):
+                    elif re.match("^NON-SMTP$", line_fields[LOG_CURSOR]):
+                        if re.search("^COMMAND", line_fields[LOG_CURSOR+1]):
                             ip_list[current_ip].actions["NON-SMTP COMMAND"] += 1
 
-                    elif re.match("^WHITELIST$", line_fields[5]):
-                        if re.search("^VETO", line_fields[6]):
+                    elif re.match("^WHITELIST$", line_fields[LOG_CURSOR]):
+                        if re.search("^VETO", line_fields[LOG_CURSOR+1]):
                             ip_list[current_ip].actions["WHITELIST VETO"] += 1
 
 # done with the log file
