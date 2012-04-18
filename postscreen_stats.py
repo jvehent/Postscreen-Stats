@@ -16,35 +16,35 @@ from types import *
 
 def usage():
     print   '''
-    postscreen_stats.py
-        parses postfix logs to compute statistics on postscreen activity
+postscreen_stats.py
+    parses postfix logs to compute statistics on postscreen activity
 
-    usage: postscreen_stats.py -f mail.log
-   
-    <-a|--action=>   action filter with operators | and &
-                        ex. 'PREGREET&DNSBL|HANGUP' => ((PREGREET and DNSBL) or HANGUP)
-                        ex. 'HANGUP&DNSBL|PREGREET&DNSBL' 
-                            => ((HANGUP and DNSBL) or (PREGREET and DNSBL)
+usage: postscreen_stats.py -f mail.log
 
-    <-f|--file=>     log file to parse (default to /var/log/maillog)
-
-    <-g>            /!\ slow ! ip geoloc against hostip.info (default disabled)
-
-    <--geofile=>    path to a maxmind geolitecity.dat. if specified, with the -g switch
-                    the script uses the maxmind data instead of hostip.info (faster)
-
-    <-G>            when using --geofile, use the pygeoip module instead of the GeoIP module
-
-    <-i|--ip=>      filters the results on a specific IP
-
-    <--mapdest=>    path to a destination HTML file that will display a Google Map of the result
-                    /!\ Require the geolocation, preferably with --geofile
-
-    <-r|--report=>  report mode {short|full|ip|none} (default to short)
-
-    <-y|--year=>    select the year of the logs (default to current year)
-
-    example: $ ./postscreen_stats.py -f maillog.3 -r short -y 2011 --geofile=../geoip/GeoIPCity.dat -G --mapdest=postscreen_report_2012-01-15.html
+  -a|--action=   action filter with operators | and &
+                      ex. 'PREGREET&DNSBL|HANGUP' = ((PREGREET and DNSBL) or HANGUP)
+                      ex. 'HANGUP&DNSBL|PREGREET&DNSBL' 
+                          = ((HANGUP and DNSBL) or (PREGREET and DNSBL)
+  
+  -f|--file=     log file to parse (default to /var/log/maillog)
+  
+  -g            /!\ slow ! ip geoloc against hostip.info (default disabled)
+  
+  --geofile=    path to a maxmind geolitecity.dat. if specified, with the -g switch
+                  the script uses the maxmind data instead of hostip.info (faster)
+  
+  -G            when using --geofile, use the pygeoip module instead of the GeoIP module
+  
+  -i|--ip=      filters the results on a specific IP
+  
+  --mapdest=    path to a destination HTML file that will display a Google Map of the result
+                  /!\ Require the geolocation, preferably with --geofile
+  
+  -r|--report=  report mode {short|full|ip|none} (default to short)
+  
+  -y|--year=    select the year of the logs (default to current year)
+  
+example: $ ./postscreen_stats.py -f maillog.3 -r short -y 2011 --geofile=../geoip/GeoIPCity.dat -G --mapdest=postscreen_report_2012-01-15.html
 
 Julien Vehent (http://1nw.eu/!j) - https://github.com/jvehent/Postscreen-Stats
 '''
