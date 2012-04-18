@@ -407,7 +407,8 @@ if REPORT_MODE in ('short','full'):
         print clients[stat],stat
 
     print "\n=== First reconnection delay (graylist) ==="
-    print "delay| <10s   |>10to30s| >30to1m| >1to5m | >5to30m|>30mto2h| >2hto5h|>5hto12h|>12to24h| >24h   |";
+    print   "delay| <10s   |>10to30s| >30to1m| >1to5m | >5to30m|" + \
+            ">30mto2h| >2hto5h|>5hto12h|>12to24h| >24h   |"
     # display the absolute values
     sys.stdout.write("count|")
     sys.stdout.write(str(comeback['<10s']).ljust(8) + "|")
@@ -427,16 +428,26 @@ if REPORT_MODE in ('short','full'):
         dec_cameback = Decimal(clients["reconnections"])
     
         sys.stdout.write("   % |")
-        sys.stdout.write(str(Decimal(comeback['<10s'])/dec_cameback * 100).ljust(8) + "|")
-        sys.stdout.write(str(Decimal(comeback['>10s to 30s'])/dec_cameback * 100).ljust(8) + "|")
-        sys.stdout.write(str(Decimal(comeback['>30s to 1min'])/dec_cameback * 100).ljust(8) + "|")
-        sys.stdout.write(str(Decimal(comeback['>1min to 5min'])/dec_cameback * 100).ljust(8) + "|")
-        sys.stdout.write(str(Decimal(comeback['>5 min to 30min'])/dec_cameback * 100).ljust(8) + "|")
-        sys.stdout.write(str(Decimal(comeback['>30min to 2h'])/dec_cameback * 100).ljust(8) + "|")
-        sys.stdout.write(str(Decimal(comeback['>2h to 5h'])/dec_cameback * 100).ljust(8) + "|")
-        sys.stdout.write(str(Decimal(comeback['>5h to 12h'])/dec_cameback * 100).ljust(8) + "|")
-        sys.stdout.write(str(Decimal(comeback['>12h to 24h'])/dec_cameback * 100).ljust(8) + "|")
-        print str(Decimal(comeback['>24h'])/dec_cameback * 100).ljust(8) + "|"
+        sys.stdout.write(str(Decimal(comeback['<10s'])\
+                            /dec_cameback * 100).ljust(8) + "|")
+        sys.stdout.write(str(Decimal(comeback['>10s to 30s'])\
+                            /dec_cameback * 100).ljust(8) + "|")
+        sys.stdout.write(str(Decimal(comeback['>30s to 1min'])\
+                            /dec_cameback * 100).ljust(8) + "|")
+        sys.stdout.write(str(Decimal(comeback['>1min to 5min'])\
+                            /dec_cameback * 100).ljust(8) + "|")
+        sys.stdout.write(str(Decimal(comeback['>5 min to 30min'])\
+                            /dec_cameback * 100).ljust(8) + "|")
+        sys.stdout.write(str(Decimal(comeback['>30min to 2h'])\
+                            /dec_cameback * 100).ljust(8) + "|")
+        sys.stdout.write(str(Decimal(comeback['>2h to 5h'])\
+                            /dec_cameback * 100).ljust(8) + "|")
+        sys.stdout.write(str(Decimal(comeback['>5h to 12h'])\
+                            /dec_cameback * 100).ljust(8) + "|")
+        sys.stdout.write(str(Decimal(comeback['>12h to 24h'])\
+                            /dec_cameback * 100).ljust(8) + "|")
+        print str(Decimal(comeback['>24h'])\
+                            /dec_cameback * 100).ljust(8) + "|"
 
     if GEOLOC > 0:
         total_blocked = Decimal(clients["blocked clients"])
