@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Parses the postscreen logs and display stats
-# jvehent - 20120418
+# jvehent - 20120419
 
 import re
 import time
@@ -39,6 +39,8 @@ usage: postscreen_stats.py -f mail.log
   
   --mapdest=    path to a destination HTML file that will display a Google Map of the result
                   /!\ Require the geolocation, preferably with --geofile
+
+  --map-min-conn=   When creating a map, only map the IPs that have connected X number of times
   
   -r|--report=  report mode {short|full|ip|none} (default to short)
   
@@ -121,6 +123,7 @@ GEOLOC = 0
 GEOFILE = ""
 MAPDEST = ""
 RFC3339 = False
+MAP_MIN_CONN = 0
 
 # position of 'postfix/postscreen' inside the logs
 LOG_CURSOR = 5
@@ -133,7 +136,7 @@ ip_list = {}
 args_list, remainder = getopt.getopt(sys.argv[1:],
     'a:gGi:f:y:r:h', ['action=','geoloc','geofile=',
     'mapdest=','ip=','year=','report=','help', 'file=',
-    'rfc3339'])
+    'rfc3339','map-min-conn='])
 
 for argument, value in args_list:
     if argument in ('-a', '--action'):
@@ -166,6 +169,8 @@ for argument, value in args_list:
     elif argument in ('--mapdest'):
         MAPDEST = value
         print "Google map will be generated at",MAPDEST
+    elif argument in ('--map-min-conn'):
+	    MAP_MIN_CONN = int(value)
     elif argument in ('-h', '--help'):
         usage()
         sys.exit()
@@ -510,7 +515,8 @@ if MAPDEST not in "" and GEOLOC > 1:
     for client in blocked_clients:
         if  type(ip_list[client].geoloc) is not NoneType \
             and ip_list[client].geoloc.has_key('latitude') \
-            and ip_list[client].geoloc.has_key('longitude'):
+            and ip_list[client].geoloc.has_key('longitude') \
+	        and (ip_list[client].logs['CONNECT'] >= MAP_MIN_CONN):
 
             mapcode = mapcode + '''
                 var ip''' + str(incr) + '''= new google.maps.LatLng(''' \
@@ -576,7 +582,7 @@ if MAPDEST not in "" and GEOLOC > 1:
         <h1>Postscreen Map of Blocked IPs</h1>
         <div id="map">
         </div>
-        <p>mapping ''' + str(len(blocked_clients)) + ''' blocked IPs</p>
+        <p>mapping ''' + str(incr) + ''' blocked IPs</p>
         <p>generated using <a href="https://github.com/jvehent/Postscreen-Stats">Postscreen-Stats</a> by <a href="http://1nw.eu/!j">Julien Vehent</a></p>
     </body>
 </html>

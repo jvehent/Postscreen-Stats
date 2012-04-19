@@ -9,36 +9,45 @@ Published under GPL v2
 Usage
 -------
 
-    postscreen_stats.py
-        parses postfix logs to compute statistics on postscreen activity
+```
 
-    usage: postscreen_stats.py <-y|--year> <-r|--report|-f|--full>
-   
-    <-a|--action>   action filter with operators | and &
-                        ex. 'PREGREET&DNSBL|HANGUP' => ((PREGREET and DNSBL) or HANGUP)
-                        ex. 'HANGUP&DNSBL|PREGREET&DNSBL' 
-                            => ((HANGUP and DNSBL) or (PREGREET and DNSBL)
+postscreen_stats.py
+    parses postfix logs to compute statistics on postscreen activity
 
-    <-f|--file>     log file to parse (default to /var/log/maillog)
+usage: postscreen_stats.py -f mail.log
 
-    <-g|--geoloc>   /!\ slow ! ip geoloc against hostip.info (default disabled)
+  -a|--action=   action filter with operators | and &
+                      ex. 'PREGREET&DNSBL|HANGUP' = ((PREGREET and DNSBL) or HANGUP)
+                      ex. 'HANGUP&DNSBL|PREGREET&DNSBL' 
+                          = ((HANGUP and DNSBL) or (PREGREET and DNSBL)
 
-    <--geofile>     path to a maxmind geolitecity.dat. if specified, with the -g switch
-                   the script uses the maxmind data instead of hostip.info (faster)
+  -f|--file=     log file to parse (default to /var/log/maillog)
 
-    <-G>            when using --geofile, use the pygeoip module instead of the GeoIP module
+  -g            /!\ slow ! ip geoloc against hostip.info (default disabled)
 
-    <-i|--ip>       filters the results on a specific IP
+  --geofile=    path to a maxmind geolitecity.dat. if specified, with the -g switch
+                the script uses the maxmind data instead of hostip.info (faster)
 
-    <--mapdest>     path to a destination HTML file that will display a Google Map of the result
-                    /!\ Require the geolocation, preferably with --geofile
+  -G            when using --geofile, use the pygeoip module instead of the GeoIP module
 
-    <-r|--report>   report mode {short|full|ip} (default to short)
+  -i|--ip=      filters the results on a specific IP
 
-    <-y|--year>     select the year of the logs (default to current year)
+  --mapdest=    path to a destination HTML file that will display a Google Map of the result
+                  /!\ Require the geolocation, preferably with --geofile
 
-    Julien Vehent (http://1nw.eu/!j) - https://github.com/jvehent/Postscreen-Stats
+  --map-min-conn=   When creating a map, only map the IPs that have connected X number of times
 
+  -r|--report=  report mode {short|full|ip|none} (default to short)
+
+  -y|--year=    select the year of the logs (default to current year)
+
+  --rfc3339     to set the timestamp type to "2012-04-13T08:53:00+02:00" instead of the regular syslog format "Oct 23 04:02:17"
+
+example: $ ./postscreen_stats.py -f maillog.3 -r short -y 2011 --geofile=../geoip/GeoIPCity.dat -G --mapdest=postscreen_report_2012-01-15.html
+
+Julien Vehent (http://1nw.eu/!j) - https://github.com/jvehent/Postscreen-Stats
+
+```
 
 Basic usage
 --------------
@@ -97,9 +106,9 @@ There are 3 GeoIP modes:
  1. Use hostip.info online geoip service. This is free but slow and not very accurate
  2. Use Maxmind's GeoIP database. You can use either the free version of the DB from their website, or get a paid version. 
 
-To use hostip.info, just set the -g option.
-To use maxmind, set the --geofile to point to your Maxmind DB (ie. --geofile=/path/to/GeoIPCity.dat)
-By default, geofile use the GeoIP python module, but if you prefer to use pygeoip instead, set the -G option as well.
+To use hostip.info, just set the ```-g``` option.
+To use maxmind, set the ```--geofile``` to point to your Maxmind DB (ie. ```--geofile=/path/to/GeoIPCity.dat```)
+By default, geofile use the GeoIP python module, but if you prefer to use ```pygeoip``` instead, set the ```-G``` option as well.
     
     $ ./postscreen_stats.py -r short --geofile=../geoip/GeoIPCity.dat -G -f maillog.3 -y 2011
    
@@ -133,13 +142,18 @@ Using the MaxMind free database at http://www.maxmind.com/app/geolitecity
     1. Download the database and extract GeoLiteCity.dat at the location of your choice
     2. install the GeoIP maxmind package
         # aptitude install python-geoip
-    3. launch postscreen_stats with --geofile="/path/to/geolistcity.dat"
+    3. launch postscreen_stats with ```--geofile="/path/to/geolistcity.dat"```
 
 Google Map of the blocked IPs
 -----------------------------------
-You can use the --geomap option to create an HTML file with a map of the blocked IPs.
+You can use the ```--mapdest``` option to create an HTML file with a map of the blocked IPs.
+
     $ ./postscreen_stats.py -f maillog.3 -r none -y 2011 --geofile=../geoip/GeoIPCity.dat -G --mapdest=postscreen_report_2012-01-15.html
 
     Google map will be generated at postscreen_report_2012-01-15.html
     using MaxMind GeoIP database from ../geoip/GeoIPCity.dat
     Creating HTML map at postscreen_report_2012-01-15.html
+
+If you have *a lot* of IPs to map, you can use ```--map-min-conn``` to only map IPs that connected X+ number of times.
+
+    ./postscreen_stats.py -f maillog.3 -y 2011 -g --geofile=../geoip/GeoIPCity.dat -G --mapdest=testmap.html --map-min-conn=5
