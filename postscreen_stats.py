@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Parses the postscreen logs and display stats
-# jvehent - 20120419
+# jvehent - 20120526
 
 import re
 import time
@@ -25,27 +25,27 @@ usage: postscreen_stats.py -f mail.log
                       ex. 'PREGREET&DNSBL|HANGUP' = ((PREGREET and DNSBL) or HANGUP)
                       ex. 'HANGUP&DNSBL|PREGREET&DNSBL' 
                           = ((HANGUP and DNSBL) or (PREGREET and DNSBL)
-  
+
   -f|--file=     log file to parse (default to /var/log/maillog)
-  
+
   -g            /!\ slow ! ip geoloc against hostip.info (default disabled)
-  
+
   --geofile=    path to a maxmind geolitecity.dat. if specified, with the -g switch
                   the script uses the maxmind data instead of hostip.info (faster)
-  
+
   -G            when using --geofile, use the pygeoip module instead of the GeoIP module
-  
+
   -i|--ip=      filters the results on a specific IP
-  
+
   --mapdest=    path to a destination HTML file that will display a Google Map of the result
                   /!\ Require the geolocation, preferably with --geofile
 
   --map-min-conn=   When creating a map, only map the IPs that have connected X number of times
-  
+
   -r|--report=  report mode {short|full|ip|none} (default to short)
-  
+
   -y|--year=    select the year of the logs (default to current year)
-  
+
   --rfc3339     to set the timestamp type to "2012-04-13T08:53:00+02:00" instead of the regular syslog format "Oct 23 04:02:17"
 
 example: $ ./postscreen_stats.py -f maillog.3 -r short -y 2011 --geofile=../geoip/GeoIPCity.dat -G --mapdest=postscreen_report_2012-01-15.html
