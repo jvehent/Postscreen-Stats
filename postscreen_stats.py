@@ -496,6 +496,7 @@ if REPORT_MODE in ('short','full'):
 
 # generate the HTML for the google map and store it in a file
 if MAPDEST not in "" and GEOLOC > 1:
+    fd = open(MAPDEST,"w")
     mapcode = '''<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
     <head>
@@ -514,6 +515,8 @@ if MAPDEST not in "" and GEOLOC > 1:
                     document.getElementById('map'),mapOptions
                     );
 '''
+    fd.write(mapcode)
+
     incr = 0
     for client in blocked_clients:
         if  type(ip_list[client].geoloc) is not NoneType \
@@ -521,8 +524,8 @@ if MAPDEST not in "" and GEOLOC > 1:
             and ip_list[client].geoloc.has_key('longitude') \
 	        and (ip_list[client].logs['CONNECT'] >= MAP_MIN_CONN):
 
-            mapcode = mapcode + '''
-                var ip''' + str(incr) + '''= new google.maps.LatLng(''' \
+            mapcode = '''
+                ip[''' + str(incr) + '''] = new google.maps.LatLng(''' \
                     + str(ip_list[client].geoloc['latitude']) + "," \
                     + str(ip_list[client].geoloc['longitude']) + ''');
                 var marker_ip'''+str(incr)+''' = new google.maps.Marker({
@@ -534,35 +537,45 @@ if MAPDEST not in "" and GEOLOC > 1:
                     '<div id="siteNotice"></div><h2 id="firstHeading" class="firstHeading">' +
                     ' ''' + str(client) + '''</h2><div id="bodyContent">' +
                     ' '''
+            fd.write(mapcode)
+
             for log in sorted(ip_list[client].logs):
                 if log in ('FIRST SEEN','LAST SEEN'):
-                    mapcode = mapcode + '<p>' + log + ": " + str(datetime.datetime.fromtimestamp\
+                    mapcode = '<p>' + log + ": " + str(datetime.datetime.fromtimestamp\
                         (int(ip_list[client].logs[log])).strftime('%Y-%m-%d %H:%M:%S'))\
                         + '''</p>' +
                     ' '''
+		    fd.write(mapcode)
                 else:
-                    mapcode = mapcode + '<p>' + log + ": " + str(ip_list[client].logs[log]) + '''</p>' +
+                    mapcode = '<p>' + log + ": " + str(ip_list[client].logs[log]) + '''</p>' +
                     ' '''
+		    fd.write(mapcode)
 
             for action in sorted(ip_list[client].actions):
                 if ip_list[client].actions[action] > 0:
-                    mapcode = mapcode + '<p>' + action + ": " + str(ip_list[client].actions[action]) + '''</p>' +
+                    mapcode = '<p>' + action + ": " + str(ip_list[client].actions[action]) + '''</p>' +
                     ' '''
+		    fd.write(mapcode)
                     if action in ('DNSBL'):
-                        mapcode = mapcode + '<p>' + "DNSBL ranks: "
+                        mapcode = '<p>' + "DNSBL ranks: "
+			fd.write(mapcode)
                         for rank in ip_list[client].dnsbl_ranks: 
-                            mapcode = mapcode + " " + str(rank) + ","
-                        mapcode = mapcode + '''</p>' +
+                            mapcode = " " + str(rank) + ","
+			    fd.write(mapcode)
+                        mapcode = '''</p>' +
                     ' '''
+		    fd.write(mapcode)
+
             if ip_list[client].geoloc.has_key('city'):
-                mapcode = mapcode + '<p>' + 'Location: ' + \
+                mapcode = '<p>' + 'Location: ' + \
                     re.escape(str(ip_list[client].geoloc['city'])) + ", " + \
                     re.escape(str(ip_list[client].geoloc['country_code'])) +  '''<p> ' +
                     ' '''
+		fd.write(mapcode)
                     
-            mapcode = mapcode +  '''</div></div>';
-                var infowindow''' + str(incr) + ''' = new google.maps.InfoWindow({
-                    content: desc_ip''' + str(incr) + ''',
+            mapcode = '''</div></div>';
+                info_window[''' + str(incr) + '''] = new google.maps.InfoWindow({
+                    content: desc_ip[''' + str(incr) + '''],
                     maxWidth: 500
                 });
                 google.maps.event.addListener(marker_ip'''+str(incr)+''', 'click', function() {
@@ -570,7 +583,9 @@ if MAPDEST not in "" and GEOLOC > 1:
                 });
 '''
             incr += 1
-    mapcode = mapcode + '''
+	    fd.write(mapcode)
+
+    mapcode = '''
             }
         </script>
         <style type="text/css">
@@ -590,7 +605,6 @@ if MAPDEST not in "" and GEOLOC > 1:
     </body>
 </html>
 '''
-    fd = open(MAPDEST,"w")
     fd.write(mapcode)
     fd.close()
     print "Creating HTML map at",MAPDEST
