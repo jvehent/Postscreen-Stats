@@ -504,6 +504,11 @@ if MAPDEST not in "" and GEOLOC > 1:
         <title>Postscreen GeoMap of Blocked IPs</title>
         <script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false"></script>
         <script type="text/javascript">
+	    var ip = new Array();
+	    var marker_ip = new Array();
+	    var desc_ip = new Array();
+	    var info_window = new Array();
+
             window.onload = function() {
                 var center = new google.maps.LatLng(0,0);
                 var mapOptions = {
@@ -513,7 +518,7 @@ if MAPDEST not in "" and GEOLOC > 1:
                 };
                 var myMap = new google.maps.Map(
                     document.getElementById('map'),mapOptions
-                    );
+                );
 '''
     fd.write(mapcode)
 
@@ -521,19 +526,18 @@ if MAPDEST not in "" and GEOLOC > 1:
     for client in blocked_clients:
         if  type(ip_list[client].geoloc) is not NoneType \
             and ip_list[client].geoloc.has_key('latitude') \
-            and ip_list[client].geoloc.has_key('longitude') \
-	        and (ip_list[client].logs['CONNECT'] >= MAP_MIN_CONN):
+            and ip_list[client].geoloc.has_key('longitude'):
 
             mapcode = '''
                 ip[''' + str(incr) + '''] = new google.maps.LatLng(''' \
                     + str(ip_list[client].geoloc['latitude']) + "," \
                     + str(ip_list[client].geoloc['longitude']) + ''');
-                var marker_ip'''+str(incr)+''' = new google.maps.Marker({
-                        position: ip''' + str(incr) + ''',
+                marker_ip[''' + str(incr) + '''] = new google.maps.Marker({
+                        position: ip[''' + str(incr) + '''],
                         map: myMap,
                         title: "''' + str(client) + '''"
                         });
-                var desc_ip''' + str(incr) + ''' = '<div id="content">' +
+                desc_ip[''' + str(incr) + '''] = '<div id="content">' +
                     '<div id="siteNotice"></div><h2 id="firstHeading" class="firstHeading">' +
                     ' ''' + str(client) + '''</h2><div id="bodyContent">' +
                     ' '''
@@ -578,8 +582,8 @@ if MAPDEST not in "" and GEOLOC > 1:
                     content: desc_ip[''' + str(incr) + '''],
                     maxWidth: 500
                 });
-                google.maps.event.addListener(marker_ip'''+str(incr)+''', 'click', function() {
-                    infowindow'''+str(incr)+'''.open(myMap,marker_ip'''+str(incr)+''');
+                google.maps.event.addListener(marker_ip[''' + str(incr) + '''], 'click', function() {
+                    info_window[''' + str(incr) + '''].open(myMap,marker_ip[''' + str(incr) + ''']);
                 });
 '''
             incr += 1
@@ -600,7 +604,7 @@ if MAPDEST not in "" and GEOLOC > 1:
         <h1>Postscreen Map of Blocked IPs</h1>
         <div id="map">
         </div>
-        <p>mapping ''' + str(incr) + ''' blocked IPs</p>
+        <p>mapping ''' + str(len(blocked_clients)) + ''' blocked IPs</p>
         <p>generated using <a href="https://github.com/jvehent/Postscreen-Stats">Postscreen-Stats</a> by <a href="http://1nw.eu/!j">Julien Vehent</a></p>
     </body>
 </html>
