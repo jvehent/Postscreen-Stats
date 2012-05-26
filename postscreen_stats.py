@@ -485,11 +485,14 @@ if REPORT_MODE in ('short','full'):
         from operator import itemgetter
         sorted_countries = blocked_countries.items()
         sorted_countries.sort(key = itemgetter(1), reverse=True)
+        count_format = ""
         for i in range(20):
             if i < len(sorted_countries):
                 country,clients = sorted_countries[i]
-                cpercent = "(%5.2f%%)" % float(Decimal(clients)/total_blocked*100)
-                print "%4d" % clients, cpercent, country
+                if count_format in "":
+                    count_format = "%" + str(len(str(clients))) + "d"
+                client_percent = "(%5.2f%%)" % float(Decimal(clients)/total_blocked*100)
+                print count_format % clients, client_percent, country
 
 # generate the HTML for the google map and store it in a file
 if MAPDEST not in "" and GEOLOC > 1:
