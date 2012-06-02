@@ -113,7 +113,7 @@ class ClientStat:
 # VARIABLES
 IP_REGEXP = "((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}" \
             "(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))"
-IP_FILTER = "."
+IP_FILTER = " "
 ACTION_FILTER = None
 NOW = datetime.datetime.now()
 YEAR = NOW.year
@@ -189,7 +189,7 @@ for line in maillog:
     # Get postscreen logs only
     if "/postscreen[" in line:
         # apply the user defilter filter
-        if re.match(IP_FILTER,line):
+        if IP_FILTER in line:
             # parse the log line
             line_fields = line.split(None, LOG_CURSOR+1)
             
