@@ -42,13 +42,13 @@ usage: postscreen_stats.py -f mail.log
 
   --map-min-conn=   When creating a map, only map the IPs that have connected X number of times
 
-  -r|--report=  report mode {short|full|ip|none} (default to short)
+  --report=  report mode {short|full|ip|none} (default to short)
 
   -y|--year=    select the year of the logs (default to current year)
 
   --rfc3339     to set the timestamp type to "2012-04-13T08:53:00+02:00" instead of the regular syslog format "Oct 23 04:02:17"
 
-example: $ ./postscreen_stats.py -f maillog.3 -r short -y 2011 --geofile=../geoip/GeoIPCity.dat -G --mapdest=postscreen_report_2012-01-15.html
+example: $ ./postscreen_stats.py -f maillog.3 --report=short -y 2011 --geofile=../geoip/GeoIPCity.dat -G --mapdest=postscreen_report_2012-01-15.html
 
 Julien Vehent (http://1nw.eu/!j) - https://github.com/jvehent/Postscreen-Stats
 '''
@@ -131,10 +131,9 @@ LOG_CURSOR = 5
 # the list of clients ips and pointer to instance of class
 ip_list = {}
 
-
 # command line arguments
 args_list, remainder = getopt.getopt(sys.argv[1:],
-    'a:gGi:f:y:r:h', ['action=','geoloc','geofile=',
+    'a:gGi:f:y:h', ['action=','geoloc','geofile=',
     'mapdest=','ip=','year=','report=','help', 'file=',
     'rfc3339','map-min-conn='])
 
@@ -158,8 +157,8 @@ for argument, value in args_list:
         LOG_CURSOR = 3
     elif argument in ('-i', '--ip'):
         IP_FILTER = value
-        print "Filtering results to match:",IP_FILTER
-    elif argument in ('-r', '--report'):
+        print "Filtering results on IP",IP_FILTER
+    elif argument in ('--report'):
         if value in ('short','full','ip','none'):
             REPORT_MODE = value
         else:
