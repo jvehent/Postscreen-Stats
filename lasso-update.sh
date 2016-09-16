@@ -9,8 +9,8 @@ wget --quiet $URL -O $DROPLASSO
 
 if [ -e $DROPLASSO ]
 then
-  # decoupe le fichier source sur le point virgule
-  # et prepare le fichier de destination
+  # cut the source file on the semicolon
+  # and prepare the destination file
   for network in $(cat $DROPLASSO | awk '{print $1}' |\
     grep -E "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}$")
   do
