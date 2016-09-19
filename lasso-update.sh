@@ -1,5 +1,6 @@
-#! /bin/sh
-URL=http://www.spamhaus.org/drop/drop.lasso
+#!/bin/bash
+set -u
+URL=https://www.spamhaus.org/drop/drop.lasso
 DROPLASSO=$(mktemp)
 ACLFILE=$(mktemp)
 POSTSCREEN_ACCESS_FILE=/etc/postfix/postscreen_access.cidr

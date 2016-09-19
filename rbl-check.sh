@@ -1,4 +1,5 @@
 #!/bin/bash
+set -u
 DEBUG="$1"
 # Replace the SRV list with your own machines' full Internet DNS names
 SRV="localhost"
