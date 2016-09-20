@@ -1,10 +1,9 @@
 #!/bin/bash
 set -u
-DEBUG="$1"
 # Replace the SRV list with your own machines' full Internet DNS names
 SRV="localhost"
 # Build up the RBL list using the bash += append operator
-RBL="bl.spamcop.net b.barracudacentral.org zen.spamhaus.org free.v4bl.org "
+RBL="bl.spamcop.net b.barracudacentral.org zen.spamhaus.org "
 RBL+="dnsbl.sorbs.net spam.dnsbl.sorbs.net truncate.gbudb.net all.s5h.net "
 RBL+="dnsbl-1.uceprotect.net dnsbl-2.uceprotect.net dnsbl-3.uceprotect.net "
 RBL+="bl.spamcannibal.org psbl.surriel.com ubl.unsubscore.com db.wpbl.info "
@@ -13,8 +12,9 @@ RBL+="dnsbl.inps.de drone.abuse.ch httpbl.abuse.ch korea.services.net "
 RBL+="short.rbl.jp virus.rbl.jp spamrbl.imp.ch wormrbl.imp.ch virbl.bit.nl "
 RBL+="ips.backscatterer.org spamguard.leadmon.net dnsbl.tornevall.org "
 RBL+="ix.dnsbl.manitu.net tor.dan.me.uk bad.psky.me rbl.efnetrbl.org "
-RBL+="dnsbl.dronebl.org access.redhawk.org hostkarma.junkemailfilter.com "
+RBL+="dnsbl.dronebl.org access.redhawk.org "
 RBL+="rbl.interserver.net query.senderbase.org bogons.cymru.com "
+# Other DNSbl lists:  free.v4bl.org  hostkarma.junkemailfilter.com
 for server in $SRV
 do
     # Resolve the DNS name into an Internet IP address
@@ -25,7 +25,7 @@ do
     r_ip=$(echo $ip|awk -F"." '{for(i=NF;i>0;i--) printf i!=1?$i".":"%s",$i}')
     for rbl in $RBL
     do
-        if [ ! -z "$DEBUG" ]
+        if [ "$#" -gt 0 ]
         then
             echo "testing $server ($ip) against $rbl"
         fi
@@ -43,7 +43,7 @@ do
                 echo ""
             fi
         fi
-        if [[ ! -z "$DEBUG" && -z "$result" ]]
+        if [[ "$#" -gt 0 && -z "$result" ]]
         then
             echo "\`->negative"
         fi
