@@ -18,24 +18,24 @@ RBL+="rbl.interserver.net query.senderbase.org bogons.cymru.com "
 for server in $SRV
 do
     # Resolve the DNS name into an Internet IP address
-    ip=$(dig +short $server)
+    ip=$(dig +short $server | grep -E "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$")
     # Testing IP address = 127.0.0.2
     #ip="127.0.0.2"
     # Reverse the IP address octets for DNSbl check format
-    r_ip=$(echo $ip|awk -F"." '{for(i=NF;i>0;i--) printf i!=1?$i".":"%s",$i}')
+    r_ip=$(echo "$ip" | awk -F"." '{for(i=NF;i>0;i--) printf i!=1?$i".":"%s",$i}')
     for rbl in $RBL
     do
         if [ "$#" -gt 0 ]
         then
             echo "testing $server ($ip) against $rbl"
         fi
-        result=$(dig +short $r_ip.$rbl)
+        result=$(dig +short "$r_ip"."$rbl")
         if [ ! -z "$result" ]
         then
             # Some DNSbls return multiple results, change newlines to spaces
             echo -n "$server ($ip) is in $rbl with result ${result//$'\n'/ }"
             # Also try to get any TXT DNS records
-            text=$(dig +short $r_ip.$rbl TXT)
+            text=$(dig +short "$r_ip"."$rbl" TXT)
             if [ ! -z "$text" ]
             then
                 echo " and text ${text//$'\n'/ }"
